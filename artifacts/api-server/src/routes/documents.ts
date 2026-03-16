@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql, count, inArray } from "drizzle-orm";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import {
   ListDocumentSlotsParams,
@@ -14,6 +14,14 @@ import {
 
 const router: IRouter = Router();
 
+async function verifyProjectOwnership(userId: string, projectId: number): Promise<boolean> {
+  const [project] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)));
+  return !!project;
+}
+
 router.get("/projects/:projectId/subcontractors/:subcontractorId/documents", async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -23,6 +31,11 @@ router.get("/projects/:projectId/subcontractors/:subcontractorId/documents", asy
   const params = ListDocumentSlotsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (!(await verifyProjectOwnership(req.user.id, params.data.projectId))) {
+    res.status(404).json({ error: "Project not found" });
     return;
   }
 
@@ -47,6 +60,11 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
     return;
   }
 
+  if (!(await verifyProjectOwnership(req.user.id, params.data.projectId))) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
   const parsed = AddDocumentSlotBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -65,6 +83,16 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
   res.status(201).json(doc);
 });
 
+async function verifyDocSlotOwnership(userId: string, documentSlotId: number): Promise<boolean> {
+  const result = await db
+    .select({ id: documentSlotsTable.id })
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
+    .where(and(eq(documentSlotsTable.id, documentSlotId), eq(projectsTable.userId, userId)));
+  return result.length > 0;
+}
+
 router.patch("/documents/:documentSlotId", async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -80,6 +108,12 @@ router.patch("/documents/:documentSlotId", async (req, res): Promise<void> => {
   const parsed = UpdateDocumentSlotBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const isOwner = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
+  if (!isOwner) {
+    res.status(404).json({ error: "Document slot not found" });
     return;
   }
 
@@ -115,6 +149,12 @@ router.delete("/documents/:documentSlotId", async (req, res): Promise<void> => {
     return;
   }
 
+  const isOwner = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
+  if (!isOwner) {
+    res.status(404).json({ error: "Document slot not found" });
+    return;
+  }
+
   const [doc] = await db
     .delete(documentSlotsTable)
     .where(eq(documentSlotsTable.id, params.data.documentSlotId))
@@ -137,6 +177,11 @@ router.get("/projects/:projectId/documents", async (req, res): Promise<void> => 
   const params = ListAllProjectDocumentsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (!(await verifyProjectOwnership(req.user.id, params.data.projectId))) {
+    res.status(404).json({ error: "Project not found" });
     return;
   }
 

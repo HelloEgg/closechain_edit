@@ -179,7 +179,7 @@ function ImportDialog({ projectId, open, onOpenChange }: { projectId: number, op
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const mapped = results.data.map((row: any) => ({
+        const mapped = results.data.map((row: Record<string, string>) => ({
           vendorName: row['Vendor Name'] || row.vendorName || row.Name || '',
           vendorCode: row['Vendor Code'] || row.vendorCode || row.Code || '',
           csiCode: row['CSI Code'] || row.csiCode || row.CSI || '',

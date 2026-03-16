@@ -180,9 +180,19 @@ router.delete("/projects/:projectId/subcontractors/:subcontractorId", async (req
     return;
   }
 
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, params.data.projectId), eq(projectsTable.userId, req.user.id)));
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
   const [sub] = await db
     .delete(subcontractorsTable)
-    .where(eq(subcontractorsTable.id, params.data.subcontractorId))
+    .where(and(eq(subcontractorsTable.id, params.data.subcontractorId), eq(subcontractorsTable.projectId, params.data.projectId)))
     .returning();
 
   if (!sub) {
