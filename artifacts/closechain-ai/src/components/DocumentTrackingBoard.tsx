@@ -165,7 +165,7 @@ function DocumentRow({ doc, projectId, isLocked }: { doc: DocumentSlotWithSubcon
 
         {doc.status !== 'not_submitted' && doc.filePath && (
           <a 
-            href={`/api${doc.filePath}`} 
+            href={`/api/storage${doc.filePath}`} 
             target="_blank"
             className="inline-flex items-center gap-2 px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg text-sm font-medium transition-colors"
           >

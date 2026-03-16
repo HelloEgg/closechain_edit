@@ -161,6 +161,12 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
+  const division = await getCsiDivision(parsed.data.csiCode);
+  if (!division) {
+    res.status(400).json({ error: `Invalid CSI code: ${parsed.data.csiCode}. No matching trade found.` });
+    return;
+  }
+
   const [sub] = await db
     .insert(subcontractorsTable)
     .values({ ...parsed.data, projectId: params.data.projectId })
@@ -202,6 +208,18 @@ router.post("/projects/:projectId/subcontractors/import", async (req, res): Prom
 
   if (!project) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const invalidCodes: string[] = [];
+  for (const subData of parsed.data.subcontractors) {
+    const division = await getCsiDivision(subData.csiCode);
+    if (!division) {
+      invalidCodes.push(subData.csiCode);
+    }
+  }
+  if (invalidCodes.length > 0) {
+    res.status(400).json({ error: `Invalid CSI codes: ${[...new Set(invalidCodes)].join(", ")}. No matching trades found.` });
     return;
   }
 
