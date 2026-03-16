@@ -2,7 +2,7 @@ import { useGetProject, useListAllProjectDocuments, useApproveProject } from "@w
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams } from "wouter";
-import { Building2, CheckCircle, Clock, ExternalLink, FileText, UploadCloud, Users, Filter, HardHat, ChevronRight } from "lucide-react";
+import { Building2, CheckCircle, Clock, ExternalLink, FileText, FolderKanban, UploadCloud, Users, Filter, HardHat, ChevronRight } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";

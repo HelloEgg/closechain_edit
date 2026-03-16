@@ -96,6 +96,20 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       return;
     }
 
+    const { eq, and } = await import("drizzle-orm");
+    const { db, projectsTable, subcontractorsTable, documentSlotsTable } = await import("@workspace/db");
+    const docs = await db
+      .select({ id: documentSlotsTable.id })
+      .from(documentSlotsTable)
+      .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+      .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
+      .where(and(eq(documentSlotsTable.filePath, objectPath), eq(projectsTable.userId, req.user.id)));
+
+    if (docs.length === 0) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
     const response = await objectStorageService.downloadObject(objectFile);
 
     res.status(response.status);

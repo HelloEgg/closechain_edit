@@ -105,7 +105,7 @@ export default function ClientPortal() {
                         <td className="px-6 py-4 w-32 text-right">
                           {doc.filePath ? (
                             <a 
-                              href={`/api${doc.filePath}`} 
+                              href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/client-portal/${token}/download${doc.filePath.replace(/^\/objects/, "")}`} 
                               target="_blank"
                               className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
                             >

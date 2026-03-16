@@ -1,10 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
+import { Readable } from "stream";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import { GetClientPortalParams } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 router.get("/client-portal/:token", async (req, res): Promise<void> => {
   const params = GetClientPortalParams.safeParse(req.params);
@@ -76,6 +79,57 @@ router.get("/client-portal/:token", async (req, res): Promise<void> => {
     approvedDocuments: approvedDocs,
     subcontractors: subsWithDocs,
   });
+});
+
+router.get("/client-portal/:token/download/*path", async (req, res): Promise<void> => {
+  const token = req.params.token;
+  const raw = req.params.path;
+  const objectPathSuffix = Array.isArray(raw) ? raw.join("/") : raw;
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.clientPortalToken, token));
+
+  if (!project || project.status !== "approved") {
+    res.status(404).json({ error: "Portal not found" });
+    return;
+  }
+
+  const docs = await db
+    .select({ filePath: documentSlotsTable.filePath })
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .where(eq(subcontractorsTable.projectId, project.id));
+
+  const fullObjectPath = `/objects/${objectPathSuffix}`;
+  const allowed = docs.some((d) => d.filePath === fullObjectPath);
+  if (!allowed) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
+  try {
+    const objectFile = await objectStorageService.getObjectEntityFile(fullObjectPath);
+    const response = await objectStorageService.downloadObject(objectFile);
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    console.error("Error serving portal download:", error);
+    res.status(500).json({ error: "Failed to download file" });
+  }
 });
 
 export default router;
