@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { type ProjectDetail, type DocumentSlotWithSubcontractor, useUpdateDocumentSlot, useAddDocumentSlot } from "@workspace/api-client-react";
+import { type ProjectDetail, type DocumentSlotWithSubcontractor, useUpdateDocumentSlot, useAddDocumentSlot, useDeleteDocumentSlot } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { FileText, UploadCloud, CheckCircle, Clock, Plus, Download, HardHat } from "lucide-react";
+import { FileText, UploadCloud, CheckCircle, Clock, Plus, Download, HardHat, Trash2 } from "lucide-react";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +81,7 @@ export function DocumentTrackingBoard({
 
                 <div className="grid gap-3">
                   {subsDocs.map(doc => (
-                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} />
+                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={project.status === 'approved'} />
                   ))}
                   {subsDocs.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground text-sm border-2 border-dashed border-border rounded-xl">
@@ -98,9 +98,10 @@ export function DocumentTrackingBoard({
   );
 }
 
-function DocumentRow({ doc, projectId }: { doc: DocumentSlotWithSubcontractor, projectId: number }) {
+function DocumentRow({ doc, projectId, isLocked }: { doc: DocumentSlotWithSubcontractor, projectId: number, isLocked: boolean }) {
   const { uploadFile, isUploading } = useFileUpload();
   const updateMutation = useUpdateDocumentSlot();
+  const deleteMutation = useDeleteDocumentSlot();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -179,6 +180,27 @@ function DocumentRow({ doc, projectId }: { doc: DocumentSlotWithSubcontractor, p
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
             <CheckCircle className="w-4 h-4" /> Approve
+          </button>
+        )}
+
+        {!isLocked && doc.status !== 'approved' && (
+          <button
+            onClick={() => {
+              if (confirm(`Remove "${doc.documentType}" requirement?`)) {
+                deleteMutation.mutate({ documentSlotId: doc.id }, {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
+                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+                    toast({ title: "Document requirement removed" });
+                  }
+                });
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="inline-flex items-center gap-1 px-2 py-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg text-sm transition-colors"
+            title="Remove requirement"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>

@@ -23,6 +23,14 @@ async function verifyProjectOwnership(userId: string, projectId: number): Promis
   return !!project;
 }
 
+async function verifySubBelongsToProject(subcontractorId: number, projectId: number): Promise<boolean> {
+  const [sub] = await db
+    .select({ id: subcontractorsTable.id })
+    .from(subcontractorsTable)
+    .where(and(eq(subcontractorsTable.id, subcontractorId), eq(subcontractorsTable.projectId, projectId)));
+  return !!sub;
+}
+
 router.get("/projects/:projectId/subcontractors/:subcontractorId/documents", async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -37,6 +45,11 @@ router.get("/projects/:projectId/subcontractors/:subcontractorId/documents", asy
 
   if (!(await verifyProjectOwnership(req.user.id, params.data.projectId))) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (!(await verifySubBelongsToProject(params.data.subcontractorId, params.data.projectId))) {
+    res.status(404).json({ error: "Subcontractor not found in this project" });
     return;
   }
 
@@ -63,6 +76,11 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
 
   if (!(await verifyProjectOwnership(req.user.id, params.data.projectId))) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (!(await verifySubBelongsToProject(params.data.subcontractorId, params.data.projectId))) {
+    res.status(404).json({ error: "Subcontractor not found in this project" });
     return;
   }
 

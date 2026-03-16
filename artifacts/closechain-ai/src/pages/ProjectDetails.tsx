@@ -1,9 +1,9 @@
-import { useGetProject, useListAllProjectDocuments, useApproveProject } from "@workspace/api-client-react";
+import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteDocumentSlot } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, CheckCircle, ExternalLink, FileText, FolderKanban, HardHat, Calendar, Hash } from "lucide-react";
+import { Building2, CheckCircle, ExternalLink, FileText, FolderKanban, HardHat, Calendar, Hash, Trash2 } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -131,7 +131,7 @@ export default function ProjectDetails() {
         </Tabs.List>
 
         <Tabs.Content value="doctype" className="focus:outline-none">
-          <DocumentTypeView project={project} documents={allDocs || []} isLoading={docsLoading} />
+          <DocumentTypeView project={project} documents={allDocs || []} isLoading={docsLoading} projectId={projectId} />
         </Tabs.Content>
 
         <Tabs.Content value="tracking" className="focus:outline-none">
@@ -146,8 +146,12 @@ export default function ProjectDetails() {
   );
 }
 
-function DocumentTypeView({ project, documents, isLoading }: { project: any, documents: any[], isLoading: boolean }) {
+function DocumentTypeView({ project, documents, isLoading, projectId }: { project: any, documents: any[], isLoading: boolean, projectId: number }) {
   const [expandedType, setExpandedType] = useState<string | null>(null);
+  const deleteMutation = useDeleteDocumentSlot();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const isLocked = project.status === 'approved';
 
   const groupedByType = useMemo(() => {
     const map: Record<string, { docs: any[], approved: number, total: number }> = {};
@@ -220,13 +224,36 @@ function DocumentTypeView({ project, documents, isLoading }: { project: any, doc
                       <div className="flex items-center gap-3">
                         <StatusBadge status={doc.status} />
                         <div>
-                          <p className="font-semibold text-foreground text-sm">{doc.subcontractorName || `Sub #${doc.subcontractorId}`}</p>
-                          <p className="text-xs text-muted-foreground">CSI {doc.csiCode} — {doc.csiDivision}</p>
+                          <p className="font-semibold text-foreground text-sm">{doc.vendorName || `Sub #${doc.subcontractorId}`}</p>
+                          <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>
                         </div>
                       </div>
-                      {doc.fileName && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.fileName}</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {doc.fileName && (
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.fileName}</span>
+                        )}
+                        {!isLocked && doc.status !== 'approved' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Remove "${doc.documentType}" requirement for ${doc.vendorName || 'this subcontractor'}?`)) {
+                                deleteMutation.mutate({ documentSlotId: doc.id }, {
+                                  onSuccess: () => {
+                                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
+                                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+                                    toast({ title: "Document requirement removed" });
+                                  }
+                                });
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg text-sm transition-colors"
+                            title="Remove requirement"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
