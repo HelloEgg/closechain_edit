@@ -40,7 +40,6 @@ router.post("/ai/query", async (req, res): Promise<void> => {
     .where(eq(projectsTable.userId, userId));
 
   if (projects.length === 0) {
-    res.setHeader("Content-Type", "application/json");
     res.json({ content: "You don't have any projects yet. Create your first project to get started!" });
     return;
   }
@@ -61,7 +60,6 @@ router.post("/ai/query", async (req, res): Promise<void> => {
     .select({
       projectId: subcontractorsTable.projectId,
       subcontractorId: documentSlotsTable.subcontractorId,
-      vendorName: subcontractorsTable.vendorName,
       documentType: documentSlotsTable.documentType,
       status: documentSlotsTable.status,
     })
@@ -115,27 +113,14 @@ ${contextLines.join("\n")}`;
     { role: "user", content: question.trim() },
   ];
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders();
-
-  const stream = await openai.chat.completions.create({
+  const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages,
-    stream: true,
     max_tokens: 1024,
   });
 
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content;
-    if (content) {
-      res.write(`data: ${JSON.stringify({ content })}\n\n`);
-    }
-  }
-
-  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-  res.end();
+  const content = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
+  res.json({ content });
 });
 
 export default router;
