@@ -10,6 +10,7 @@ import {
   ListSubcontractorsParams,
 } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
+import { isProjectLocked } from "../lib/projectGuards";
 
 const router: IRouter = Router();
 
@@ -50,6 +51,50 @@ async function getSubWithProgress(sub: typeof subcontractorsTable.$inferSelect) 
     progress: stats.total > 0 ? Math.round((Number(stats.uploaded) / stats.total) * 100) : 0,
   };
 }
+
+router.get("/subcontractors", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const subs = await db
+    .select({
+      id: subcontractorsTable.id,
+      vendorName: subcontractorsTable.vendorName,
+      vendorCode: subcontractorsTable.vendorCode,
+      csiCode: subcontractorsTable.csiCode,
+      projectId: subcontractorsTable.projectId,
+      projectName: projectsTable.name,
+    })
+    .from(subcontractorsTable)
+    .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
+    .where(eq(projectsTable.userId, req.user.id))
+    .orderBy(subcontractorsTable.vendorName);
+
+  const result = await Promise.all(subs.map(async (sub) => {
+    const docs = await db
+      .select({
+        total: count(),
+        uploaded: sql<number>`count(case when ${documentSlotsTable.status} in ('uploaded', 'approved') then 1 end)`.as("uploaded"),
+        approved: sql<number>`count(case when ${documentSlotsTable.status} = 'approved' then 1 end)`.as("approved"),
+      })
+      .from(documentSlotsTable)
+      .where(eq(documentSlotsTable.subcontractorId, sub.id));
+    const stats = docs[0] || { total: 0, uploaded: 0, approved: 0 };
+    const division = getCsiDivision(sub.csiCode);
+    return {
+      ...sub,
+      csiDivision: division?.name || "Unknown",
+      totalDocuments: stats.total,
+      uploadedDocuments: Number(stats.uploaded),
+      approvedDocuments: Number(stats.approved),
+      progress: stats.total > 0 ? Math.round((Number(stats.uploaded) / stats.total) * 100) : 0,
+    };
+  }));
+
+  res.json(result);
+});
 
 router.get("/projects/:projectId/subcontractors", async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) {
@@ -95,6 +140,11 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
+    return;
+  }
+
   const parsed = CreateSubcontractorBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -131,6 +181,11 @@ router.post("/projects/:projectId/subcontractors/import", async (req, res): Prom
   const params = ImportSubcontractorsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
@@ -177,6 +232,11 @@ router.delete("/projects/:projectId/subcontractors/:subcontractorId", async (req
   const params = DeleteSubcontractorParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 

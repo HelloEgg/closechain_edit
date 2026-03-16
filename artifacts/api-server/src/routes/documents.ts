@@ -11,6 +11,7 @@ import {
   ListAllProjectDocumentsParams,
   ListAllProjectDocumentsQueryParams,
 } from "@workspace/api-zod";
+import { isProjectLocked } from "../lib/projectGuards";
 
 const router: IRouter = Router();
 
@@ -65,6 +66,11 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
     return;
   }
 
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
+    return;
+  }
+
   const parsed = AddDocumentSlotBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -83,14 +89,14 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
   res.status(201).json(doc);
 });
 
-async function verifyDocSlotOwnership(userId: string, documentSlotId: number): Promise<boolean> {
+async function verifyDocSlotOwnership(userId: string, documentSlotId: number): Promise<{ owned: boolean; projectId: number | null }> {
   const result = await db
-    .select({ id: documentSlotsTable.id })
+    .select({ id: documentSlotsTable.id, projectId: projectsTable.id })
     .from(documentSlotsTable)
     .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
     .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
     .where(and(eq(documentSlotsTable.id, documentSlotId), eq(projectsTable.userId, userId)));
-  return result.length > 0;
+  return { owned: result.length > 0, projectId: result[0]?.projectId ?? null };
 }
 
 router.patch("/documents/:documentSlotId", async (req, res): Promise<void> => {
@@ -111,9 +117,14 @@ router.patch("/documents/:documentSlotId", async (req, res): Promise<void> => {
     return;
   }
 
-  const isOwner = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
-  if (!isOwner) {
+  const ownership = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
+  if (!ownership.owned) {
     res.status(404).json({ error: "Document slot not found" });
+    return;
+  }
+
+  if (ownership.projectId && await isProjectLocked(ownership.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
@@ -149,9 +160,14 @@ router.delete("/documents/:documentSlotId", async (req, res): Promise<void> => {
     return;
   }
 
-  const isOwner = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
-  if (!isOwner) {
+  const ownership2 = await verifyDocSlotOwnership(req.user.id, params.data.documentSlotId);
+  if (!ownership2.owned) {
     res.status(404).json({ error: "Document slot not found" });
+    return;
+  }
+
+  if (ownership2.projectId && await isProjectLocked(ownership2.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 

@@ -78,10 +78,14 @@ export interface Project {
   id: number;
   name: string;
   /** @nullable */
+  jobNumber?: string | null;
+  /** @nullable */
   description?: string | null;
   clientName: string;
   /** @nullable */
   address?: string | null;
+  /** @nullable */
+  endDate?: string | null;
   status: ProjectStatus;
   /** @nullable */
   clientPortalToken?: string | null;
@@ -117,10 +121,14 @@ export interface ProjectDetail {
   id: number;
   name: string;
   /** @nullable */
+  jobNumber?: string | null;
+  /** @nullable */
   description?: string | null;
   clientName: string;
   /** @nullable */
   address?: string | null;
+  /** @nullable */
+  endDate?: string | null;
   status: ProjectDetailStatus;
   /** @nullable */
   clientPortalToken?: string | null;
@@ -135,10 +143,12 @@ export interface ProjectDetail {
 export interface CreateProjectBody {
   /** @minLength 1 */
   name: string;
+  jobNumber?: string;
   description?: string;
   /** @minLength 1 */
   clientName: string;
   address?: string;
+  endDate?: string;
 }
 
 export type UpdateProjectBodyStatus =
@@ -153,11 +163,48 @@ export const UpdateProjectBodyStatus = {
 export interface UpdateProjectBody {
   /** @minLength 1 */
   name?: string;
+  jobNumber?: string;
   description?: string;
   /** @minLength 1 */
   clientName?: string;
   address?: string;
+  endDate?: string;
   status?: UpdateProjectBodyStatus;
+}
+
+export interface SubcontractorAcrossProjects {
+  id: number;
+  vendorName: string;
+  vendorCode: string;
+  csiCode: string;
+  csiDivision: string;
+  projectId: number;
+  projectName: string;
+  totalDocuments: number;
+  uploadedDocuments: number;
+  approvedDocuments: number;
+  progress: number;
+}
+
+export type SetupProjectBodySubcontractorsItem = {
+  /** @minLength 1 */
+  vendorName: string;
+  vendorCode: string;
+  /** @minLength 1 */
+  csiCode: string;
+  documentTypes: string[];
+};
+
+export interface SetupProjectBody {
+  /** @minLength 1 */
+  name: string;
+  jobNumber?: string;
+  description?: string;
+  /** @minLength 1 */
+  clientName: string;
+  address?: string;
+  endDate?: string;
+  subcontractors: SetupProjectBodySubcontractorsItem[];
 }
 
 export interface ApproveProjectResponse {

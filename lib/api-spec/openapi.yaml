@@ -289,6 +289,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/setup:
+    post:
+      operationId: setupProject
+      tags: [projects]
+      summary: Create project with subcontractors and document slots in one step
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupProjectBody"
+      responses:
+        "201":
+          description: Project created with subs and docs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /projects/{projectId}:
     get:
       operationId: getProject
@@ -393,6 +426,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /subcontractors:
+    get:
+      operationId: listAllSubcontractors
+      tags: [subcontractors]
+      summary: List all subcontractors across all user projects
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        "200":
+          description: All subcontractors with project info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubcontractorAcrossProjects"
   /projects/{projectId}/subcontractors:
     get:
       operationId: listSubcontractors
@@ -816,11 +866,15 @@ components:
           type: integer
         name:
           type: string
+        jobNumber:
+          type: [string, 'null']
         description:
           type: [string, 'null']
         clientName:
           type: string
         address:
+          type: [string, 'null']
+        endDate:
           type: [string, 'null']
         status:
           type: string
@@ -846,11 +900,15 @@ components:
           type: integer
         name:
           type: string
+        jobNumber:
+          type: [string, 'null']
         description:
           type: [string, 'null']
         clientName:
           type: string
         address:
+          type: [string, 'null']
+        endDate:
           type: [string, 'null']
         status:
           type: string
@@ -879,12 +937,16 @@ components:
         name:
           type: string
           minLength: 1
+        jobNumber:
+          type: string
         description:
           type: string
         clientName:
           type: string
           minLength: 1
         address:
+          type: string
+        endDate:
           type: string
     UpdateProjectBody:
       type: object
@@ -892,6 +954,8 @@ components:
         name:
           type: string
           minLength: 1
+        jobNumber:
+          type: string
         description:
           type: string
         clientName:
@@ -899,9 +963,73 @@ components:
           minLength: 1
         address:
           type: string
+        endDate:
+          type: string
         status:
           type: string
           enum: [active, approved, archived]
+    SubcontractorAcrossProjects:
+      type: object
+      required: [id, vendorName, vendorCode, csiCode, csiDivision, projectId, projectName, totalDocuments, uploadedDocuments, approvedDocuments, progress]
+      properties:
+        id:
+          type: integer
+        vendorName:
+          type: string
+        vendorCode:
+          type: string
+        csiCode:
+          type: string
+        csiDivision:
+          type: string
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        totalDocuments:
+          type: integer
+        uploadedDocuments:
+          type: integer
+        approvedDocuments:
+          type: integer
+        progress:
+          type: number
+    SetupProjectBody:
+      type: object
+      required: [name, clientName, subcontractors]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        jobNumber:
+          type: string
+        description:
+          type: string
+        clientName:
+          type: string
+          minLength: 1
+        address:
+          type: string
+        endDate:
+          type: string
+        subcontractors:
+          type: array
+          items:
+            type: object
+            required: [vendorName, vendorCode, csiCode, documentTypes]
+            properties:
+              vendorName:
+                type: string
+                minLength: 1
+              vendorCode:
+                type: string
+              csiCode:
+                type: string
+                minLength: 1
+              documentTypes:
+                type: array
+                items:
+                  type: string
     ApproveProjectResponse:
       type: object
       required: [clientPortalToken, clientPortalUrl]

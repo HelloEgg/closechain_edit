@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
+import ProjectWizard from "@/pages/ProjectWizard";
 import ClientPortal from "@/pages/ClientPortal";
 
 const queryClient = new QueryClient();
@@ -20,9 +21,9 @@ function Router() {
       </Route>
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/projects/new" component={ProjectWizard} />
       <Route path="/projects/:id" component={ProjectDetails} />
       <Route path="/client-portal/:token" component={ClientPortal} />
-      {/* Fallback 404 */}
       <Route component={NotFound} />
     </Switch>
   );

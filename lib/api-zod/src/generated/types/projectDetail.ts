@@ -12,10 +12,14 @@ export interface ProjectDetail {
   id: number;
   name: string;
   /** @nullable */
+  jobNumber?: string | null;
+  /** @nullable */
   description?: string | null;
   clientName: string;
   /** @nullable */
   address?: string | null;
+  /** @nullable */
+  endDate?: string | null;
   status: ProjectDetailStatus;
   /** @nullable */
   clientPortalToken?: string | null;

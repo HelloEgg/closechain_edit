@@ -148,9 +148,11 @@ export const ListProjectsHeader = zod.object({
 export const ListProjectsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
+  jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
   clientName: zod.string(),
   address: zod.string().nullish(),
+  endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
   clientPortalToken: zod.string().nullish(),
   totalDocuments: zod.number(),
@@ -173,9 +175,38 @@ export const CreateProjectHeader = zod.object({
 
 export const CreateProjectBody = zod.object({
   name: zod.string().min(1),
+  jobNumber: zod.string().optional(),
   description: zod.string().optional(),
   clientName: zod.string().min(1),
   address: zod.string().optional(),
+  endDate: zod.string().optional(),
+});
+
+/**
+ * @summary Create project with subcontractors and document slots in one step
+ */
+export const SetupProjectHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — Bearer <sid>."),
+});
+
+export const SetupProjectBody = zod.object({
+  name: zod.string().min(1),
+  jobNumber: zod.string().optional(),
+  description: zod.string().optional(),
+  clientName: zod.string().min(1),
+  address: zod.string().optional(),
+  endDate: zod.string().optional(),
+  subcontractors: zod.array(
+    zod.object({
+      vendorName: zod.string().min(1),
+      vendorCode: zod.string(),
+      csiCode: zod.string().min(1),
+      documentTypes: zod.array(zod.string()),
+    }),
+  ),
 });
 
 /**
@@ -195,9 +226,11 @@ export const GetProjectHeader = zod.object({
 export const GetProjectResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
   clientName: zod.string(),
   address: zod.string().nullish(),
+  endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
   clientPortalToken: zod.string().nullish(),
   totalDocuments: zod.number(),
@@ -236,18 +269,22 @@ export const UpdateProjectHeader = zod.object({
 
 export const UpdateProjectBody = zod.object({
   name: zod.string().min(1).optional(),
+  jobNumber: zod.string().optional(),
   description: zod.string().optional(),
   clientName: zod.string().min(1).optional(),
   address: zod.string().optional(),
+  endDate: zod.string().optional(),
   status: zod.enum(["active", "approved", "archived"]).optional(),
 });
 
 export const UpdateProjectResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
   clientName: zod.string(),
   address: zod.string().nullish(),
+  endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
   clientPortalToken: zod.string().nullish(),
   totalDocuments: zod.number(),
@@ -289,6 +326,33 @@ export const ApproveProjectResponse = zod.object({
   clientPortalToken: zod.string(),
   clientPortalUrl: zod.string(),
 });
+
+/**
+ * @summary List all subcontractors across all user projects
+ */
+export const ListAllSubcontractorsHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — Bearer <sid>."),
+});
+
+export const ListAllSubcontractorsResponseItem = zod.object({
+  id: zod.number(),
+  vendorName: zod.string(),
+  vendorCode: zod.string(),
+  csiCode: zod.string(),
+  csiDivision: zod.string(),
+  projectId: zod.number(),
+  projectName: zod.string(),
+  totalDocuments: zod.number(),
+  uploadedDocuments: zod.number(),
+  approvedDocuments: zod.number(),
+  progress: zod.number(),
+});
+export const ListAllSubcontractorsResponse = zod.array(
+  ListAllSubcontractorsResponseItem,
+);
 
 /**
  * @summary List subcontractors for a project

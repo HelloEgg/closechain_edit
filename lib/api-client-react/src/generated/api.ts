@@ -38,6 +38,8 @@ import type {
   MobileTokenExchangeSuccess,
   Project,
   ProjectDetail,
+  SetupProjectBody,
+  SubcontractorAcrossProjects,
   SubcontractorWithProgress,
   UpdateDocumentSlotBody,
   UpdateProjectBody,
@@ -1079,6 +1081,92 @@ export const useCreateProject = <
 };
 
 /**
+ * @summary Create project with subcontractors and document slots in one step
+ */
+export const getSetupProjectUrl = () => {
+  return `/api/projects/setup`;
+};
+
+export const setupProject = async (
+  setupProjectBody: SetupProjectBody,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getSetupProjectUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(setupProjectBody),
+  });
+};
+
+export const getSetupProjectMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setupProject>>,
+    TError,
+    { data: BodyType<SetupProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setupProject>>,
+  TError,
+  { data: BodyType<SetupProjectBody> },
+  TContext
+> => {
+  const mutationKey = ["setupProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setupProject>>,
+    { data: BodyType<SetupProjectBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return setupProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetupProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setupProject>>
+>;
+export type SetupProjectMutationBody = BodyType<SetupProjectBody>;
+export type SetupProjectMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create project with subcontractors and document slots in one step
+ */
+export const useSetupProject = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setupProject>>,
+    TError,
+    { data: BodyType<SetupProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setupProject>>,
+  TError,
+  { data: BodyType<SetupProjectBody> },
+  TContext
+> => {
+  return useMutation(getSetupProjectMutationOptions(options));
+};
+
+/**
  * @summary Get a single project with details
  */
 export const getGetProjectUrl = (projectId: number) => {
@@ -1419,6 +1507,84 @@ export const useApproveProject = <
 > => {
   return useMutation(getApproveProjectMutationOptions(options));
 };
+
+/**
+ * @summary List all subcontractors across all user projects
+ */
+export const getListAllSubcontractorsUrl = () => {
+  return `/api/subcontractors`;
+};
+
+export const listAllSubcontractors = async (
+  options?: RequestInit,
+): Promise<SubcontractorAcrossProjects[]> => {
+  return customFetch<SubcontractorAcrossProjects[]>(
+    getListAllSubcontractorsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAllSubcontractorsQueryKey = () => {
+  return [`/api/subcontractors`] as const;
+};
+
+export const getListAllSubcontractorsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllSubcontractors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSubcontractors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAllSubcontractorsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAllSubcontractors>>
+  > = ({ signal }) => listAllSubcontractors({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSubcontractors>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllSubcontractorsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllSubcontractors>>
+>;
+export type ListAllSubcontractorsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all subcontractors across all user projects
+ */
+
+export function useListAllSubcontractors<
+  TData = Awaited<ReturnType<typeof listAllSubcontractors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSubcontractors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllSubcontractorsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List subcontractors for a project

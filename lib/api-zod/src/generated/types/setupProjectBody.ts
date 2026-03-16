@@ -5,16 +5,16 @@
  * Closechain AI API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { UpdateProjectBodyStatus } from "./updateProjectBodyStatus";
+import type { SetupProjectBodySubcontractorsItem } from "./setupProjectBodySubcontractorsItem";
 
-export interface UpdateProjectBody {
+export interface SetupProjectBody {
   /** @minLength 1 */
-  name?: string;
+  name: string;
   jobNumber?: string;
   description?: string;
   /** @minLength 1 */
-  clientName?: string;
+  clientName: string;
   address?: string;
   endDate?: string;
-  status?: UpdateProjectBodyStatus;
+  subcontractors: SetupProjectBodySubcontractorsItem[];
 }

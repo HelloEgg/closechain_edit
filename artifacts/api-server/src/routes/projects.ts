@@ -8,8 +8,10 @@ import {
   UpdateProjectParams,
   DeleteProjectParams,
   ApproveProjectParams,
+  SetupProjectBody,
 } from "@workspace/api-zod";
 import crypto from "crypto";
+import { isProjectLocked } from "../lib/projectGuards";
 
 const router: IRouter = Router();
 
@@ -53,6 +55,52 @@ router.get("/projects", async (req, res): Promise<void> => {
   );
 
   res.json(projectsWithProgress);
+});
+
+router.post("/projects/setup", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const parsed = SetupProjectBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { subcontractors: subsData, ...projectData } = parsed.data;
+
+  const [project] = await db
+    .insert(projectsTable)
+    .values({ ...projectData, userId: req.user.id })
+    .returning();
+
+  let totalDocs = 0;
+  for (const subData of subsData) {
+    const [sub] = await db
+      .insert(subcontractorsTable)
+      .values({
+        projectId: project.id,
+        vendorName: subData.vendorName,
+        vendorCode: subData.vendorCode || "",
+        csiCode: subData.csiCode,
+      })
+      .returning();
+
+    if (subData.documentTypes.length > 0) {
+      await db.insert(documentSlotsTable).values(
+        subData.documentTypes.map((dt) => ({
+          subcontractorId: sub.id,
+          documentType: dt,
+          status: "not_submitted" as const,
+        }))
+      );
+      totalDocs += subData.documentTypes.length;
+    }
+  }
+
+  res.status(201).json({ ...project, totalDocuments: totalDocs, uploadedDocuments: 0, approvedDocuments: 0, progress: 0 });
 });
 
 router.post("/projects", async (req, res): Promise<void> => {
@@ -142,6 +190,11 @@ router.patch("/projects/:projectId", async (req, res): Promise<void> => {
   const params = UpdateProjectParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 

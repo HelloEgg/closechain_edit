@@ -6,13 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateProjectBody {
+export type SetupProjectBodySubcontractorsItem = {
   /** @minLength 1 */
-  name: string;
-  jobNumber?: string;
-  description?: string;
+  vendorName: string;
+  vendorCode: string;
   /** @minLength 1 */
-  clientName: string;
-  address?: string;
-  endDate?: string;
-}
+  csiCode: string;
+  documentTypes: string[];
+};
