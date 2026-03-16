@@ -1,8 +1,8 @@
-# Workspace
+# Closechain AI
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Closechain AI is a web application for General Contractors in interior construction to manage closeout packages and documents. It provides multi-project dashboard, subcontractor management (manual + CSV import), CSI-code-based auto-assignment of required closeout documents, file upload per document slot, progress tracking, GC approval flow, and a client portal.
 
 ## Stack
 
@@ -11,7 +11,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
+- **Frontend**: React + Vite + Tailwind CSS + Radix UI
 - **Database**: PostgreSQL + Drizzle ORM
+- **Auth**: Replit Auth (OpenID Connect with PKCE)
+- **File Storage**: Replit Object Storage (GCS presigned URL flow)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
@@ -20,77 +23,69 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── artifacts/
+│   ├── api-server/            # Express API server
+│   └── closechain-ai/         # React + Vite frontend (served at /)
+├── lib/
+│   ├── api-spec/              # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/      # Generated React Query hooks
+│   ├── api-zod/               # Generated Zod schemas from OpenAPI
+│   ├── db/                    # Drizzle ORM schema + DB connection
+│   ├── replit-auth-web/       # Replit Auth client-side library
+│   └── object-storage-web/    # Object storage client-side library
+├── scripts/
+│   └── src/
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
+
+## Database Schema
+
+- **users** — Replit Auth user profiles (id, email, firstName, lastName, profileImageUrl)
+- **projects** — GC projects with name, clientName, description, address, status (active/approved), clientPortalToken
+- **subcontractors** — Linked to projects with vendorName, vendorCode, csiCode
+- **document_slots** — Linked to subcontractors with documentType, status (not_submitted/uploaded/approved), filePath, fileName
+
+## Key Features
+
+- **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division
+- **CSV Import**: Subcontractors can be bulk imported via CSV with columns: Vendor Name, Vendor Code, CSI Code
+- **File Upload**: Uses presigned URLs via Object Storage for direct uploads
+- **GC Approval Flow**: Approve a project to generate a client portal token/link
+- **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token`
+
+## API Routes
+
+All routes mounted at `/api`:
+- `GET /auth/user` — Current user info
+- `GET /login` — Begin Replit Auth login flow
+- `GET /callback` — OIDC callback
+- `GET /logout` — Logout
+- `GET/POST /projects` — List/create projects
+- `GET/PATCH/DELETE /projects/:projectId` — Get/update/delete project
+- `POST /projects/:projectId/approve` — Approve project, generate client portal link
+- `GET/POST /projects/:projectId/subcontractors` — List/create subcontractors
+- `POST /projects/:projectId/subcontractors/import` — CSV import
+- `DELETE /projects/:projectId/subcontractors/:subcontractorId`
+- `GET/POST /projects/:projectId/subcontractors/:subcontractorId/documents` — List/add doc slots
+- `PATCH/DELETE /documents/:documentSlotId` — Update/delete doc slot
+- `GET /projects/:projectId/documents` — List all project documents (filterable)
+- `GET /csi/divisions` — List all CSI divisions with required documents
+- `GET /client-portal/:token` — Public client portal data
+- `POST /storage/uploads/request-url` — Request presigned upload URL
+- `GET /storage/objects/public/*` — Get public object
+- `GET /storage/objects/*` — Get storage object (authed)
 
 ## TypeScript & Composite Projects
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+## Development Commands
 
-## Root Scripts
-
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
-
-## Packages
-
-### `artifacts/api-server` (`@workspace/api-server`)
-
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
-
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
-
-### `lib/db` (`@workspace/db`)
-
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
-
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
-
-### `lib/api-spec` (`@workspace/api-spec`)
-
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- `pnpm run typecheck` — Full typecheck
+- `pnpm --filter @workspace/api-server run dev` — API server
+- `pnpm --filter @workspace/closechain-ai run dev` — Frontend
+- `pnpm --filter @workspace/api-spec run codegen` — Regenerate API client
+- `pnpm --filter @workspace/db run push` — Push DB schema changes

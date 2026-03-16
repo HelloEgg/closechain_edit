@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Closechain AI API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+  - name: projects
+    description: Project management
+  - name: subcontractors
+    description: Subcontractor management
+  - name: documents
+    description: Document tracking and management
+  - name: csi
+    description: CSI code and document requirements
+  - name: client-portal
+    description: Client portal endpoints
 paths:
   /healthz:
     get:
@@ -24,7 +38,682 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Relative path to redirect to after login (must start with `/`). Defaults to `/`.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to the returnTo path on success.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an uploaded object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects for the current user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectBody"
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a single project with details
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectBody"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/approve:
+    post:
+      operationId: approveProject
+      tags: [projects]
+      summary: Approve a project closeout package for client portal
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project approved with client portal token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveProjectResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/subcontractors:
+    get:
+      operationId: listSubcontractors
+      tags: [subcontractors]
+      summary: List subcontractors for a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of subcontractors with document counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubcontractorWithProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createSubcontractor
+      tags: [subcontractors]
+      summary: Add a subcontractor to a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubcontractorBody"
+      responses:
+        "201":
+          description: Subcontractor created with auto-assigned documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractorWithProgress"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/subcontractors/import:
+    post:
+      operationId: importSubcontractors
+      tags: [subcontractors]
+      summary: Import subcontractors from CSV data
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportSubcontractorsBody"
+      responses:
+        "201":
+          description: Subcontractors imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSubcontractorsResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/subcontractors/{subcontractorId}:
+    delete:
+      operationId: deleteSubcontractor
+      tags: [subcontractors]
+      summary: Remove a subcontractor from a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: subcontractorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/subcontractors/{subcontractorId}/documents:
+    get:
+      operationId: listDocumentSlots
+      tags: [documents]
+      summary: List document slots for a subcontractor
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: subcontractorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSlot"
+    post:
+      operationId: addDocumentSlot
+      tags: [documents]
+      summary: Add a custom document requirement
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: subcontractorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDocumentSlotBody"
+      responses:
+        "201":
+          description: Document slot added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentSlot"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /documents/{documentSlotId}:
+    patch:
+      operationId: updateDocumentSlot
+      tags: [documents]
+      summary: Update a document slot (status, file)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: documentSlotId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDocumentSlotBody"
+      responses:
+        "200":
+          description: Updated document slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentSlot"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteDocumentSlot
+      tags: [documents]
+      summary: Remove a document requirement
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: documentSlotId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/documents:
+    get:
+      operationId: listAllProjectDocuments
+      tags: [documents]
+      summary: List all document slots across all subcontractors for a project
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [not_submitted, uploaded, approved]
+        - name: documentType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All document slots for the project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSlotWithSubcontractor"
+  /csi/divisions:
+    get:
+      operationId: listCsiDivisions
+      tags: [csi]
+      summary: List all CSI divisions and their required document types
+      responses:
+        "200":
+          description: CSI divisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CsiDivision"
+  /client-portal/{token}:
+    get:
+      operationId: getClientPortal
+      tags: [client-portal]
+      summary: Get client portal data (public, no auth needed)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client portal data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientPortalData"
+        "404":
+          description: Portal not found or not approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — Bearer <sid>.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +722,378 @@ components:
           type: string
       required:
         - status
-
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+    Project:
+      type: object
+      required: [id, name, clientName, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        clientName:
+          type: string
+        address:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [active, approved, archived]
+        clientPortalToken:
+          type: [string, 'null']
+        totalDocuments:
+          type: integer
+        uploadedDocuments:
+          type: integer
+        approvedDocuments:
+          type: integer
+        progress:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+    ProjectDetail:
+      type: object
+      required: [id, name, clientName, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, subcontractors, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        clientName:
+          type: string
+        address:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [active, approved, archived]
+        clientPortalToken:
+          type: [string, 'null']
+        totalDocuments:
+          type: integer
+        uploadedDocuments:
+          type: integer
+        approvedDocuments:
+          type: integer
+        progress:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        subcontractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractorWithProgress"
+    CreateProjectBody:
+      type: object
+      required: [name, clientName]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        clientName:
+          type: string
+          minLength: 1
+        address:
+          type: string
+    UpdateProjectBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        clientName:
+          type: string
+          minLength: 1
+        address:
+          type: string
+        status:
+          type: string
+          enum: [active, approved, archived]
+    ApproveProjectResponse:
+      type: object
+      required: [clientPortalToken, clientPortalUrl]
+      properties:
+        clientPortalToken:
+          type: string
+        clientPortalUrl:
+          type: string
+    SubcontractorWithProgress:
+      type: object
+      required: [id, vendorName, vendorCode, csiCode, csiDivision, totalDocuments, uploadedDocuments, approvedDocuments, progress]
+      properties:
+        id:
+          type: integer
+        vendorName:
+          type: string
+        vendorCode:
+          type: string
+        csiCode:
+          type: string
+        csiDivision:
+          type: string
+        totalDocuments:
+          type: integer
+        uploadedDocuments:
+          type: integer
+        approvedDocuments:
+          type: integer
+        progress:
+          type: number
+    CreateSubcontractorBody:
+      type: object
+      required: [vendorName, vendorCode, csiCode]
+      properties:
+        vendorName:
+          type: string
+          minLength: 1
+        vendorCode:
+          type: string
+          minLength: 1
+        csiCode:
+          type: string
+          minLength: 1
+    ImportSubcontractorsBody:
+      type: object
+      required: [subcontractors]
+      properties:
+        subcontractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSubcontractorBody"
+    ImportSubcontractorsResponse:
+      type: object
+      required: [imported, total]
+      properties:
+        imported:
+          type: integer
+        total:
+          type: integer
+        subcontractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractorWithProgress"
+    DocumentSlot:
+      type: object
+      required: [id, subcontractorId, documentType, status, createdAt]
+      properties:
+        id:
+          type: integer
+        subcontractorId:
+          type: integer
+        documentType:
+          type: string
+        status:
+          type: string
+          enum: [not_submitted, uploaded, approved]
+        filePath:
+          type: [string, 'null']
+        fileName:
+          type: [string, 'null']
+        uploadedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    DocumentSlotWithSubcontractor:
+      type: object
+      required: [id, subcontractorId, documentType, status, vendorName, csiCode, createdAt]
+      properties:
+        id:
+          type: integer
+        subcontractorId:
+          type: integer
+        documentType:
+          type: string
+        status:
+          type: string
+          enum: [not_submitted, uploaded, approved]
+        filePath:
+          type: [string, 'null']
+        fileName:
+          type: [string, 'null']
+        uploadedAt:
+          type: [string, 'null']
+          format: date-time
+        vendorName:
+          type: string
+        csiCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    AddDocumentSlotBody:
+      type: object
+      required: [documentType]
+      properties:
+        documentType:
+          type: string
+          minLength: 1
+    UpdateDocumentSlotBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_submitted, uploaded, approved]
+        filePath:
+          type: string
+        fileName:
+          type: string
+    CsiDivision:
+      type: object
+      required: [code, name, requiredDocuments]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        requiredDocuments:
+          type: array
+          items:
+            type: string
+    ClientPortalData:
+      type: object
+      required: [projectName, clientName, progress, subcontractors]
+      properties:
+        projectName:
+          type: string
+        clientName:
+          type: string
+        description:
+          type: [string, 'null']
+        address:
+          type: [string, 'null']
+        progress:
+          type: number
+        totalDocuments:
+          type: integer
+        uploadedDocuments:
+          type: integer
+        approvedDocuments:
+          type: integer
+        subcontractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientPortalSubcontractor"
+    ClientPortalSubcontractor:
+      type: object
+      required: [vendorName, csiCode, csiDivision, documents, progress]
+      properties:
+        vendorName:
+          type: string
+        csiCode:
+          type: string
+        csiDivision:
+          type: string
+        progress:
+          type: number
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientPortalDocument"
+    ClientPortalDocument:
+      type: object
+      required: [documentType, status]
+      properties:
+        documentType:
+          type: string
+        status:
+          type: string
+          enum: [not_submitted, uploaded, approved]
+        fileName:
+          type: [string, 'null']
+        filePath:
+          type: [string, 'null']

@@ -1,0 +1,20 @@
+packages:
+  "framer-motion": "For page transitions and smooth UI animations"
+  "papaparse": "For importing subcontractor data from CSV files"
+  "@types/papaparse": "Types for papaparse"
+  "lucide-react": "Beautiful, consistent icons for the UI"
+  "react-hook-form": "For robust form state management"
+  "@hookform/resolvers": "Zod integration for react-hook-form"
+
+images:
+  - path: "artifacts/closechain-ai/public/images/login-hero.png"
+    description: "A highly abstract, modern architectural interior shot of an office building. Clean lines, dark navy and white tones, very subtle lighting. Professional and premium, slightly blurred to act as a background."
+    aspect_ratio: "16:9"
+  - path: "artifacts/closechain-ai/public/images/logo-mark.png"
+    description: "A minimal, modern geometric logo mark representing construction and interconnected links. Flat design, dark navy blue, clean edges, transparent background."
+    aspect_ratio: "1:1"
+
+notes:
+  - Using generated React Query hooks from @workspace/api-client-react for API interactions.
+  - Implemented custom useAuth hook wrapping the generated auth API endpoints to ensure compatibility.
+  - Implemented custom useFileUpload hook that leverages /api/storage/uploads/request-url to upload directly to GCS.
