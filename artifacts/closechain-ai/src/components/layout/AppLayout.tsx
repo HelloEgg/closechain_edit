@@ -2,14 +2,14 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { 
-  Building2, 
   FolderKanban, 
   LogOut, 
   Menu, 
   X,
-  FileBox
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import logoFull from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_00_AM_1773689296535.png";
+import logoIcon from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_01_AM_1773689296536.png";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
@@ -38,10 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-card border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="bg-primary text-primary-foreground p-1.5 rounded-md">
-            <Building2 className="w-5 h-5" />
-          </div>
-          <span className="font-display font-bold text-lg">Closechain AI</span>
+          <img src={logoIcon} alt="Closechain AI" className="h-10 w-auto" />
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -56,11 +53,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex flex-col",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 hidden md:flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground p-2 rounded-lg shadow-sm">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <span className="font-display font-bold text-xl tracking-tight text-primary">Closechain AI</span>
+        <div className="px-4 py-4 hidden md:flex items-center">
+          <img src={logoFull} alt="Closechain AI" className="h-20 w-auto -ml-3" />
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">

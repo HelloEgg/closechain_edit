@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Building2, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import logoFull from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_00_AM_1773689296535.png";
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -29,13 +30,8 @@ export default function Login() {
 
       <div className="relative z-10 flex-1 flex flex-col justify-center px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
-          <div className="flex items-center gap-3 mb-10">
-            <img 
-              src={`${import.meta.env.BASE_URL}images/logo-mark.png`} 
-              alt="Closechain Logo" 
-              className="w-10 h-10"
-            />
-            <span className="font-display font-extrabold text-2xl tracking-tight text-primary">Closechain AI</span>
+          <div className="flex items-center mb-10">
+            <img src={logoFull} alt="Closechain AI" className="h-24 w-auto -ml-4" />
           </div>
           
           <h2 className="mt-8 text-3xl font-display font-bold tracking-tight text-foreground">
