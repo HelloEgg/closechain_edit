@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
+import { AiQueryBody } from "@workspace/api-zod";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -16,15 +17,13 @@ router.post("/ai/query", async (req, res): Promise<void> => {
     return;
   }
 
-  const { question, conversationHistory } = req.body as {
-    question: string;
-    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  };
-
-  if (!question || typeof question !== "string" || question.trim().length === 0) {
-    res.status(400).json({ error: "question is required" });
+  const parsed = AiQueryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
     return;
   }
+
+  const { question, conversationHistory } = parsed.data;
 
   const userId = req.user.id;
 
@@ -54,7 +53,7 @@ router.post("/ai/query", async (req, res): Promise<void> => {
       csiCode: subcontractorsTable.csiCode,
     })
     .from(subcontractorsTable)
-    .where(sql`${subcontractorsTable.projectId} = ANY(${sql.raw(`ARRAY[${projectIds.join(",")}]::int[]`)})`);
+    .where(inArray(subcontractorsTable.projectId, projectIds));
 
   const docStats = await db
     .select({
@@ -65,7 +64,7 @@ router.post("/ai/query", async (req, res): Promise<void> => {
     })
     .from(documentSlotsTable)
     .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
-    .where(sql`${subcontractorsTable.projectId} = ANY(${sql.raw(`ARRAY[${projectIds.join(",")}]::int[]`)})`);
+    .where(inArray(subcontractorsTable.projectId, projectIds));
 
   const contextLines: string[] = [];
   contextLines.push("CURRENT PROJECT DATA (today: " + new Date().toDateString() + ")");
