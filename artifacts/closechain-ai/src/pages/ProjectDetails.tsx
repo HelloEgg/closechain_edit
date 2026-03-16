@@ -180,14 +180,35 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
   const isLocked = project.status === 'approved';
 
   const groupedByType = useMemo(() => {
-    const map: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number }> = {};
+    const TESTING_SECTION = "Testing/Demonstration";
+    const TESTING_SUB_ITEMS = new Set([
+      "HVAC Equipment Start Up Reports",
+      "HVAC Piping Pressure Test Reports",
+    ]);
+
+    const isTestingSubItem = (docType: string) => TESTING_SUB_ITEMS.has(docType);
+
+    const map: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number, subTypes?: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number }> }> = {};
     for (const doc of documents) {
-      if (!map[doc.documentType]) {
-        map[doc.documentType] = { docs: [], approved: 0, total: 0 };
+      const isSubItem = isTestingSubItem(doc.documentType);
+      const groupKey = isSubItem ? TESTING_SECTION : doc.documentType;
+
+      if (!map[groupKey]) {
+        map[groupKey] = { docs: [], approved: 0, total: 0 };
       }
-      map[doc.documentType].docs.push(doc);
-      map[doc.documentType].total++;
-      if (doc.status === 'approved') map[doc.documentType].approved++;
+      map[groupKey].docs.push(doc);
+      map[groupKey].total++;
+      if (doc.status === 'approved') map[groupKey].approved++;
+
+      if (isSubItem) {
+        if (!map[groupKey].subTypes) map[groupKey].subTypes = {};
+        if (!map[groupKey].subTypes![doc.documentType]) {
+          map[groupKey].subTypes![doc.documentType] = { docs: [], approved: 0, total: 0 };
+        }
+        map[groupKey].subTypes![doc.documentType].docs.push(doc);
+        map[groupKey].subTypes![doc.documentType].total++;
+        if (doc.status === 'approved') map[groupKey].subTypes![doc.documentType].approved++;
+      }
     }
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [documents]);
@@ -244,50 +265,90 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
 
             {isExpanded && (
               <div className="border-t border-border bg-background p-6">
-                <div className="grid gap-3">
-                  {data.docs.map((doc: DocumentSlotWithSubcontractor) => (
-                    <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-colors gap-3">
-                      <div className="flex items-center gap-3">
-                        <StatusBadge status={doc.status} />
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">{doc.vendorName || `Sub #${doc.subcontractorId}`}</p>
-                          <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {doc.fileName && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.fileName}</span>
-                        )}
-                        {!isLocked && doc.status !== 'approved' && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Remove "${doc.documentType}" requirement for ${doc.vendorName || 'this subcontractor'}?`)) {
-                                deleteMutation.mutate({ documentSlotId: doc.id }, {
-                                  onSuccess: () => {
-                                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
-                                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-                                    toast({ title: "Document requirement removed" });
-                                  }
-                                });
-                              }
-                            }}
-                            disabled={deleteMutation.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg text-sm transition-colors"
-                            title="Remove requirement"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {data.subTypes && Object.keys(data.subTypes).length > 0 ? (
+                  <div className="space-y-5">
+                    {(() => {
+                      const directDocs = data.docs.filter((d) => d.documentType === docType);
+                      const subTypeEntries = Object.entries(data.subTypes!).sort((a, b) => a[0].localeCompare(b[0]));
+                      return (
+                        <>
+                          {directDocs.length > 0 && (
+                            <div className="grid gap-3">
+                              {directDocs.map((doc: DocumentSlotWithSubcontractor) => (
+                                <DocTypeDetailRow key={doc.id} doc={doc} isLocked={isLocked} deleteMutation={deleteMutation} queryClient={queryClient} projectId={projectId} toast={toast} />
+                              ))}
+                            </div>
+                          )}
+                          {subTypeEntries.map(([subTypeName, subTypeData]) => (
+                            <div key={subTypeName}>
+                              <div className="flex items-center gap-2 mb-3 pl-2">
+                                <div className="w-1 h-5 bg-primary/40 rounded-full" />
+                                <h4 className="text-sm font-semibold text-foreground">{subTypeName}</h4>
+                                <span className="text-xs text-muted-foreground">({subTypeData.approved}/{subTypeData.total} approved)</span>
+                              </div>
+                              <div className="grid gap-3 pl-5">
+                                {subTypeData.docs.map((doc: DocumentSlotWithSubcontractor) => (
+                                  <DocTypeDetailRow key={doc.id} doc={doc} isLocked={isLocked} deleteMutation={deleteMutation} queryClient={queryClient} projectId={projectId} toast={toast} />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {data.docs.map((doc: DocumentSlotWithSubcontractor) => (
+                      <DocTypeDetailRow key={doc.id} doc={doc} isLocked={isLocked} deleteMutation={deleteMutation} queryClient={queryClient} projectId={projectId} toast={toast} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function DocTypeDetailRow({ doc, isLocked, deleteMutation, queryClient, projectId, toast }: { doc: DocumentSlotWithSubcontractor, isLocked: boolean, deleteMutation: ReturnType<typeof useDeleteDocumentSlot>, queryClient: ReturnType<typeof useQueryClient>, projectId: number, toast: ReturnType<typeof useToast>["toast"] }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-colors gap-3">
+      <div className="flex items-center gap-3">
+        <StatusBadge status={doc.status} />
+        <div>
+          <p className="font-semibold text-foreground text-sm">{doc.vendorName || `Sub #${doc.subcontractorId}`}</p>
+          <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {doc.fileName && (
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.fileName}</span>
+        )}
+        {!isLocked && doc.status !== 'approved' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Remove "${doc.documentType}" requirement for ${doc.vendorName || 'this subcontractor'}?`)) {
+                deleteMutation.mutate({ documentSlotId: doc.id }, {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
+                    queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+                    toast({ title: "Document requirement removed" });
+                  }
+                });
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="inline-flex items-center gap-1 px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg text-sm transition-colors"
+            title="Remove requirement"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

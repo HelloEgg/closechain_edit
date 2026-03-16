@@ -177,12 +177,15 @@ function SubcontractorAggregateView() {
 
   const aggregated = useMemo(() => {
     if (!allSubs) return [];
-    const map: Record<string, { vendorName: string; csiCode: string; csiDivision: string; projects: { projectId: number; projectName: string; progress: number }[] }> = {};
+    const map: Record<string, { vendorName: string; csiCode: string; csiDivision: string; totalDocuments: number; uploadedDocuments: number; approvedDocuments: number; projects: { projectId: number; projectName: string; progress: number }[] }> = {};
     for (const sub of allSubs) {
       const key = sub.vendorName.toLowerCase();
       if (!map[key]) {
-        map[key] = { vendorName: sub.vendorName, csiCode: sub.csiCode, csiDivision: sub.csiDivision, projects: [] };
+        map[key] = { vendorName: sub.vendorName, csiCode: sub.csiCode, csiDivision: sub.csiDivision, totalDocuments: 0, uploadedDocuments: 0, approvedDocuments: 0, projects: [] };
       }
+      map[key].totalDocuments += sub.totalDocuments;
+      map[key].uploadedDocuments += sub.uploadedDocuments;
+      map[key].approvedDocuments += sub.approvedDocuments;
       map[key].projects.push({
         projectId: sub.projectId,
         projectName: sub.projectName,
@@ -229,13 +232,15 @@ function SubcontractorAggregateView() {
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vendor</th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CSI Code</th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</th>
-              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg Progress</th>
+              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Docs</th>
+              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progress</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.map((sub, idx) => {
-              const avgProgress = sub.projects.length > 0 
-                ? Math.round(sub.projects.reduce((s, p) => s + p.progress, 0) / sub.projects.length) 
+              const openDocs = sub.totalDocuments - sub.uploadedDocuments;
+              const progress = sub.totalDocuments > 0
+                ? Math.round((sub.uploadedDocuments / sub.totalDocuments) * 100)
                 : 0;
               return (
                 <tr key={idx} className="hover:bg-secondary/20 transition-colors">
@@ -262,11 +267,20 @@ function SubcontractorAggregateView() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="text-sm">
+                      <span className="font-semibold text-foreground">{sub.uploadedDocuments}</span>
+                      <span className="text-muted-foreground"> received</span>
+                      <span className="text-muted-foreground mx-1">/</span>
+                      <span className="font-semibold text-foreground">{openDocs}</span>
+                      <span className="text-muted-foreground"> open</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden max-w-[100px]">
-                        <div className="h-full bg-primary transition-all" style={{ width: `${avgProgress}%` }} />
+                        <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
                       </div>
-                      <span className="text-xs font-bold">{avgProgress}%</span>
+                      <span className="text-xs font-bold">{progress}%</span>
                     </div>
                   </td>
                 </tr>

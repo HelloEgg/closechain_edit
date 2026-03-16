@@ -57,6 +57,7 @@ artifacts-monorepo/
 - **Project Detail Dual Views**: Document Type View (grouped by doc type with drill-down) and Subcontractor View (grouped by sub with drill-down)
 - **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division
 - **9 Closeout Package Sections**: Permits, Inspection/Sign Off, As-Builts, Balancing Report, Testing/Demonstration, Equipment O&Ms, Project Submittals, Warranty, Architectural Maintenance Instructions
+- **HVAC Document Grouping**: HVAC-specific test reports (Start Up Reports, Piping Pressure Test Reports) are visually grouped as sub-items under "Testing/Demonstration" in Document Type views
 - **Document Section View**: Toggle between "By Subcontractor" and "By Section" views on the document tracking board
 - **CSV/Excel Import**: Subcontractors can be bulk imported via CSV or Excel (.xlsx/.xls) with columns: Vendor Name, Vendor Code, CSI Code
 - **Secure File Upload**: Uses presigned URLs via Object Storage with intent tracking (30-min expiry); documentSlotId required to request upload URL

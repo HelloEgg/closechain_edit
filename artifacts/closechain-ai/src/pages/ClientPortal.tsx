@@ -132,15 +132,35 @@ function SubcontractorPortalView({ portalData, token }: { portalData: ClientPort
 
 function DocTypePortalView({ portalData, token }: { portalData: ClientPortalData, token: string }) {
   const groupedByType = useMemo(() => {
-    const map: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number }> = {};
+    const TESTING_SECTION = "Testing/Demonstration";
+    const TESTING_SUB_ITEMS = new Set([
+      "HVAC Equipment Start Up Reports",
+      "HVAC Piping Pressure Test Reports",
+    ]);
+    const isTestingSubItem = (docType: string) => TESTING_SUB_ITEMS.has(docType);
+
+    const map: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number; subTypes?: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number }> }> = {};
     for (const sub of portalData.subcontractors) {
       for (const doc of sub.documents) {
-        if (!map[doc.documentType]) {
-          map[doc.documentType] = { docs: [], approved: 0, total: 0 };
+        const isSub = isTestingSubItem(doc.documentType);
+        const groupKey = isSub ? TESTING_SECTION : doc.documentType;
+
+        if (!map[groupKey]) {
+          map[groupKey] = { docs: [], approved: 0, total: 0 };
         }
-        map[doc.documentType].docs.push({ doc, sub });
-        map[doc.documentType].total++;
-        if (doc.status === "approved") map[doc.documentType].approved++;
+        map[groupKey].docs.push({ doc, sub });
+        map[groupKey].total++;
+        if (doc.status === "approved") map[groupKey].approved++;
+
+        if (isSub) {
+          if (!map[groupKey].subTypes) map[groupKey].subTypes = {};
+          if (!map[groupKey].subTypes![doc.documentType]) {
+            map[groupKey].subTypes![doc.documentType] = { docs: [], approved: 0, total: 0 };
+          }
+          map[groupKey].subTypes![doc.documentType].docs.push({ doc, sub });
+          map[groupKey].subTypes![doc.documentType].total++;
+          if (doc.status === "approved") map[groupKey].subTypes![doc.documentType].approved++;
+        }
       }
     }
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
@@ -171,35 +191,33 @@ function DocTypePortalView({ portalData, token }: { portalData: ClientPortalData
             <div className="p-0">
               <table className="w-full text-left">
                 <tbody className="divide-y divide-border">
-                  {data.docs.map(({ doc, sub }, dIdx) => (
-                    <tr key={dIdx} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <HardHat className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <div>
-                            <p className="font-semibold text-foreground text-sm">{sub.vendorName}</p>
-                            <p className="text-xs text-muted-foreground">{sub.csiDivision}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 w-32">
-                        <StatusBadge status={doc.status} />
-                      </td>
-                      <td className="px-6 py-4 w-32 text-right">
-                        {doc.filePath ? (
-                          <a
-                            href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/client-portal/${token}/download${doc.filePath.replace(/^\/objects/, "")}`}
-                            target="_blank"
-                            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
-                          >
-                            <Download className="w-3.5 h-3.5" /> Download
-                          </a>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Pending</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.subTypes && Object.keys(data.subTypes).length > 0 ? (
+                    <>
+                      {data.docs.filter(({ doc: d }) => d.documentType === docType).map(({ doc, sub }, dIdx) => (
+                        <PortalDocTypeRow key={`direct-${dIdx}`} doc={doc} sub={sub} token={token} />
+                      ))}
+                      {Object.entries(data.subTypes).sort((a, b) => a[0].localeCompare(b[0])).map(([subTypeName, subTypeData]) => (
+                        <>
+                          <tr key={`header-${subTypeName}`} className="bg-secondary/30">
+                            <td colSpan={3} className="px-6 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-1 h-4 bg-primary/40 rounded-full" />
+                                <span className="text-sm font-semibold text-foreground">{subTypeName}</span>
+                                <span className="text-xs text-muted-foreground">({subTypeData.approved}/{subTypeData.total} approved)</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {subTypeData.docs.map(({ doc, sub }, dIdx) => (
+                            <PortalDocTypeRow key={`${subTypeName}-${dIdx}`} doc={doc} sub={sub} token={token} />
+                          ))}
+                        </>
+                      ))}
+                    </>
+                  ) : (
+                    data.docs.map(({ doc, sub }, dIdx) => (
+                      <PortalDocTypeRow key={dIdx} doc={doc} sub={sub} token={token} />
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -207,6 +225,38 @@ function DocTypePortalView({ portalData, token }: { portalData: ClientPortalData
         );
       })}
     </div>
+  );
+}
+
+function PortalDocTypeRow({ doc, sub, token }: { doc: ClientPortalDocument, sub: ClientPortalSubcontractor, token: string }) {
+  return (
+    <tr className="hover:bg-gray-50/50 transition-colors">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <HardHat className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div>
+            <p className="font-semibold text-foreground text-sm">{sub.vendorName}</p>
+            <p className="text-xs text-muted-foreground">{sub.csiDivision}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 w-32">
+        <StatusBadge status={doc.status} />
+      </td>
+      <td className="px-6 py-4 w-32 text-right">
+        {doc.filePath ? (
+          <a
+            href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/client-portal/${token}/download${doc.filePath.replace(/^\/objects/, "")}`}
+            target="_blank"
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5" /> Download
+          </a>
+        ) : (
+          <span className="text-xs text-muted-foreground italic">Pending</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
