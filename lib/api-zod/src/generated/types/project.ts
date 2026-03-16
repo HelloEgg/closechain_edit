@@ -14,7 +14,8 @@ export interface Project {
   jobNumber?: string | null;
   /** @nullable */
   description?: string | null;
-  clientName: string;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   address?: string | null;
   /** @nullable */

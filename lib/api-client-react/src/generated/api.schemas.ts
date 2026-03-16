@@ -83,7 +83,8 @@ export interface Project {
   jobNumber?: string | null;
   /** @nullable */
   description?: string | null;
-  clientName: string;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   address?: string | null;
   /** @nullable */
@@ -126,7 +127,8 @@ export interface ProjectDetail {
   jobNumber?: string | null;
   /** @nullable */
   description?: string | null;
-  clientName: string;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   address?: string | null;
   /** @nullable */
@@ -147,8 +149,6 @@ export interface CreateProjectBody {
   name: string;
   jobNumber?: string;
   description?: string;
-  /** @minLength 1 */
-  clientName: string;
   address?: string;
   endDate?: string;
 }
@@ -202,8 +202,6 @@ export interface SetupProjectBody {
   name: string;
   jobNumber?: string;
   description?: string;
-  /** @minLength 1 */
-  clientName: string;
   address?: string;
   endDate?: string;
   subcontractors: SetupProjectBodySubcontractorsItem[];
@@ -339,7 +337,8 @@ export interface ClientPortalSubcontractor {
 
 export interface ClientPortalData {
   projectName: string;
-  clientName: string;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   description?: string | null;
   /** @nullable */

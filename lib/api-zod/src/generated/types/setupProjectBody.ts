@@ -12,8 +12,6 @@ export interface SetupProjectBody {
   name: string;
   jobNumber?: string;
   description?: string;
-  /** @minLength 1 */
-  clientName: string;
   address?: string;
   endDate?: string;
   subcontractors: SetupProjectBodySubcontractorsItem[];

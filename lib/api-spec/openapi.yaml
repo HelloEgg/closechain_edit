@@ -913,7 +913,7 @@ components:
           $ref: '#/components/schemas/UploadUrlRequest'
     Project:
       type: object
-      required: [id, name, clientName, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, createdAt]
+      required: [id, name, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, createdAt]
       properties:
         id:
           type: integer
@@ -924,7 +924,7 @@ components:
         description:
           type: [string, 'null']
         clientName:
-          type: string
+          type: [string, 'null']
         address:
           type: [string, 'null']
         endDate:
@@ -947,7 +947,7 @@ components:
           format: date-time
     ProjectDetail:
       type: object
-      required: [id, name, clientName, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, subcontractors, createdAt]
+      required: [id, name, status, totalDocuments, uploadedDocuments, approvedDocuments, progress, subcontractors, createdAt]
       properties:
         id:
           type: integer
@@ -958,7 +958,7 @@ components:
         description:
           type: [string, 'null']
         clientName:
-          type: string
+          type: [string, 'null']
         address:
           type: [string, 'null']
         endDate:
@@ -985,7 +985,7 @@ components:
             $ref: "#/components/schemas/SubcontractorWithProgress"
     CreateProjectBody:
       type: object
-      required: [name, clientName]
+      required: [name]
       properties:
         name:
           type: string
@@ -994,9 +994,6 @@ components:
           type: string
         description:
           type: string
-        clientName:
-          type: string
-          minLength: 1
         address:
           type: string
         endDate:
@@ -1049,7 +1046,7 @@ components:
           type: number
     SetupProjectBody:
       type: object
-      required: [name, clientName, subcontractors]
+      required: [name, subcontractors]
       properties:
         name:
           type: string
@@ -1058,9 +1055,6 @@ components:
           type: string
         description:
           type: string
-        clientName:
-          type: string
-          minLength: 1
         address:
           type: string
         endDate:
@@ -1231,12 +1225,12 @@ components:
             type: string
     ClientPortalData:
       type: object
-      required: [projectName, clientName, progress, subcontractors]
+      required: [projectName, progress, subcontractors]
       properties:
         projectName:
           type: string
         clientName:
-          type: string
+          type: [string, 'null']
         description:
           type: [string, 'null']
         address:

@@ -8,7 +8,7 @@ export const projectsTable = pgTable("projects", {
   name: varchar("name", { length: 255 }).notNull(),
   jobNumber: varchar("job_number", { length: 100 }),
   description: text("description"),
-  clientName: varchar("client_name", { length: 255 }).notNull(),
+  clientName: varchar("client_name", { length: 255 }),
   address: text("address"),
   endDate: varchar("end_date", { length: 20 }),
   status: varchar("status", { length: 20 }).notNull().default("active"),

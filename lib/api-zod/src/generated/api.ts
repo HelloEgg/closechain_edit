@@ -154,7 +154,7 @@ export const ListProjectsResponseItem = zod.object({
   name: zod.string(),
   jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
-  clientName: zod.string(),
+  clientName: zod.string().nullish(),
   address: zod.string().nullish(),
   endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
@@ -181,7 +181,6 @@ export const CreateProjectBody = zod.object({
   name: zod.string().min(1),
   jobNumber: zod.string().optional(),
   description: zod.string().optional(),
-  clientName: zod.string().min(1),
   address: zod.string().optional(),
   endDate: zod.string().optional(),
 });
@@ -200,7 +199,6 @@ export const SetupProjectBody = zod.object({
   name: zod.string().min(1),
   jobNumber: zod.string().optional(),
   description: zod.string().optional(),
-  clientName: zod.string().min(1),
   address: zod.string().optional(),
   endDate: zod.string().optional(),
   subcontractors: zod.array(
@@ -232,7 +230,7 @@ export const GetProjectResponse = zod.object({
   name: zod.string(),
   jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
-  clientName: zod.string(),
+  clientName: zod.string().nullish(),
   address: zod.string().nullish(),
   endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
@@ -286,7 +284,7 @@ export const UpdateProjectResponse = zod.object({
   name: zod.string(),
   jobNumber: zod.string().nullish(),
   description: zod.string().nullish(),
-  clientName: zod.string(),
+  clientName: zod.string().nullish(),
   address: zod.string().nullish(),
   endDate: zod.string().nullish(),
   status: zod.enum(["active", "approved", "archived"]),
@@ -604,7 +602,7 @@ export const GetClientPortalParams = zod.object({
 
 export const GetClientPortalResponse = zod.object({
   projectName: zod.string(),
-  clientName: zod.string(),
+  clientName: zod.string().nullish(),
   description: zod.string().nullish(),
   address: zod.string().nullish(),
   progress: zod.number(),

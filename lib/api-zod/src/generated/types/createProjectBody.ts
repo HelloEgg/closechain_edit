@@ -11,8 +11,6 @@ export interface CreateProjectBody {
   name: string;
   jobNumber?: string;
   description?: string;
-  /** @minLength 1 */
-  clientName: string;
   address?: string;
   endDate?: string;
 }

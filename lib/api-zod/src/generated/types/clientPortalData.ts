@@ -9,7 +9,8 @@ import type { ClientPortalSubcontractor } from "./clientPortalSubcontractor";
 
 export interface ClientPortalData {
   projectName: string;
-  clientName: string;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   description?: string | null;
   /** @nullable */

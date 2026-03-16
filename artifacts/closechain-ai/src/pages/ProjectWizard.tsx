@@ -9,8 +9,6 @@ import { ArrowLeft, ArrowRight, Check, Plus, X, ChevronDown, ChevronUp } from "l
 interface ProjectInfoData {
   name: string;
   jobNumber: string;
-  clientName: string;
-  address: string;
   endDate: string;
   description: string;
 }
@@ -58,8 +56,6 @@ export default function ProjectWizard() {
   const [projectInfo, setProjectInfo] = useState({
     name: "",
     jobNumber: "",
-    clientName: "",
-    address: "",
     endDate: "",
     description: "",
   });
@@ -83,8 +79,8 @@ export default function ProjectWizard() {
 
   const handleNext = () => {
     if (step === 0) {
-      if (!projectInfo.name || !projectInfo.clientName) {
-        toast({ title: "Please fill in required fields", variant: "destructive" });
+      if (!projectInfo.name) {
+        toast({ title: "Please enter a project name", variant: "destructive" });
         return;
       }
       if (subs.length === 0) initSubsFromCSI();
@@ -148,8 +144,6 @@ export default function ProjectWizard() {
       data: {
         name: projectInfo.name,
         jobNumber: projectInfo.jobNumber || undefined,
-        clientName: projectInfo.clientName,
-        address: projectInfo.address || undefined,
         endDate: projectInfo.endDate || undefined,
         description: projectInfo.description || undefined,
         subcontractors: validSubs.map(s => ({
@@ -251,16 +245,8 @@ function StepProjectInfo({ info, onChange }: { info: ProjectInfoData, onChange: 
           <input value={info.jobNumber} onChange={e => update("jobNumber", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g., JOB-2026-001" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">Client Name <span className="text-destructive">*</span></label>
-          <input value={info.clientName} onChange={e => update("clientName", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g., Acme Corp" />
-        </div>
-        <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">End Date</label>
           <input type="date" value={info.endDate} onChange={e => update("endDate", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-foreground mb-1.5">Address</label>
-          <input value={info.address} onChange={e => update("address", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Project address" />
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-foreground mb-1.5">Description</label>
@@ -423,9 +409,7 @@ function StepReview({ projectInfo, subs }: { projectInfo: ProjectInfoData, subs:
         <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
           <p><span className="text-muted-foreground">Name:</span> {projectInfo.name}</p>
           {projectInfo.jobNumber && <p><span className="text-muted-foreground">Job #:</span> {projectInfo.jobNumber}</p>}
-          <p><span className="text-muted-foreground">Client:</span> {projectInfo.clientName}</p>
           {projectInfo.endDate && <p><span className="text-muted-foreground">End Date:</span> {projectInfo.endDate}</p>}
-          {projectInfo.address && <p className="col-span-2"><span className="text-muted-foreground">Address:</span> {projectInfo.address}</p>}
         </div>
       </div>
 
