@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import * as Dialog from "@radix-ui/react-dialog";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { FileUp, Plus, X, Search, HardHat } from "lucide-react";
 
 export function SubcontractorList({ project }: { project: ProjectDetail }) {
@@ -85,7 +86,7 @@ export function SubcontractorList({ project }: { project: ProjectDetail }) {
               {filteredSubs.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                    No subcontractors found. Add one manually or import from CSV.
+                    No subcontractors found. Add one manually or import from CSV/Excel.
                   </td>
                 </tr>
               )}
@@ -171,41 +172,58 @@ function ImportDialog({ projectId, open, onOpenChange }: { projectId: number, op
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const parseRows = (rows: Record<string, string>[]) => {
+    const mapped = rows.map((row) => ({
+      vendorName: row['Vendor Name'] || row.vendorName || row.Name || '',
+      vendorCode: row['Vendor Code'] || row.vendorCode || row.Code || '',
+      csiCode: row['CSI Code'] || row.csiCode || row.CSI || '',
+    })).filter(r => r.vendorName && r.csiCode);
+
+    if (mapped.length === 0) {
+      toast({ title: "Import failed", description: "Could not find required columns. Expected: Vendor Name, Vendor Code, CSI Code.", variant: "destructive" });
+      return;
+    }
+
+    mutation.mutate({ projectId, data: { subcontractors: mapped } }, {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+        onOpenChange(false);
+        toast({ title: "Import Successful", description: `Imported ${data.imported} subcontractors.` });
+      }
+    });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const mapped = results.data.map((row: Record<string, string>) => ({
-          vendorName: row['Vendor Name'] || row.vendorName || row.Name || '',
-          vendorCode: row['Vendor Code'] || row.vendorCode || row.Code || '',
-          csiCode: row['CSI Code'] || row.csiCode || row.CSI || '',
-        })).filter(r => r.vendorName && r.csiCode);
-
-        if (mapped.length === 0) {
-          toast({ title: "Import failed", description: "Could not find required columns in CSV.", variant: "destructive" });
-          return;
+    if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { defval: '' });
+        parseRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          parseRows(results.data as Record<string, string>[]);
         }
-
-        mutation.mutate({ projectId, data: { subcontractors: mapped } }, {
-          onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-            onOpenChange(false);
-            toast({ title: "Import Successful", description: `Imported ${data.imported} subcontractors.` });
-          }
-        });
-      }
-    });
+      });
+    }
   };
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Trigger asChild>
         <button className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg font-medium border border-border hover:bg-secondary/80 transition-all">
-          <FileUp className="w-4 h-4" /> Import CSV
+          <FileUp className="w-4 h-4" /> Import CSV/Excel
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -220,13 +238,13 @@ function ImportDialog({ projectId, open, onOpenChange }: { projectId: number, op
           </div>
           <Dialog.Title className="text-xl font-display font-bold mb-2">Import Subcontractors</Dialog.Title>
           <p className="text-sm text-muted-foreground mb-6">
-            Upload a CSV file with columns: <strong>Vendor Name</strong>, <strong>Vendor Code</strong>, and <strong>CSI Code</strong>.
+            Upload a CSV or Excel (.xlsx) file with columns: <strong>Vendor Name</strong>, <strong>Vendor Code</strong>, and <strong>CSI Code</strong>.
           </p>
           
           <label className="relative block w-full border-2 border-dashed border-border rounded-xl p-8 hover:border-primary/50 hover:bg-secondary/50 transition-all cursor-pointer">
-            <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} disabled={mutation.isPending} />
+            <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileUpload} disabled={mutation.isPending} />
             <span className="text-sm font-medium text-primary">
-              {mutation.isPending ? "Processing..." : "Click to browse CSV file"}
+              {mutation.isPending ? "Processing..." : "Click to browse CSV or Excel file"}
             </span>
           </label>
         </Dialog.Content>
