@@ -265,7 +265,8 @@ function SubcontractorAggregateView() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-xs font-semibold text-foreground mr-1">{sub.projects.length}</span>
                       {sub.projects.map((p, pi) => (
                         <Link key={pi} href={`/projects/${p.projectId}`}>
                           <span className="text-xs text-primary hover:underline cursor-pointer bg-primary/5 px-2 py-1 rounded">{p.projectName}</span>
