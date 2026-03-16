@@ -24,6 +24,8 @@ tags:
     description: CSI code and document requirements
   - name: client-portal
     description: Client portal endpoints
+  - name: ai
+    description: Manager AI assistant
 paths:
   /healthz:
     get:
@@ -798,6 +800,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /ai/query:
+    post:
+      operationId: aiQuery
+      tags: [ai]
+      summary: Ask Manager AI a question about projects and documents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiQueryBody"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQueryResponse"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -1276,3 +1300,27 @@ components:
           type: [string, 'null']
         filePath:
           type: [string, 'null']
+    AiQueryBody:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+        conversationHistory:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [user, assistant]
+              content:
+                type: string
+    AiQueryResponse:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string

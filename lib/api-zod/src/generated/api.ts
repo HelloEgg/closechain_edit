@@ -634,3 +634,23 @@ export const ClientPortalDownloadParams = zod.object({
   token: zod.coerce.string(),
   filePath: zod.coerce.string(),
 });
+
+/**
+ * @summary Ask Manager AI a question about projects and documents
+ */
+
+export const AiQueryBody = zod.object({
+  question: zod.string().min(1),
+  conversationHistory: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const AiQueryResponse = zod.object({
+  content: zod.string(),
+});

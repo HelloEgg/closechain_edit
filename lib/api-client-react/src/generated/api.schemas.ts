@@ -350,6 +350,29 @@ export interface ClientPortalData {
   subcontractors: ClientPortalSubcontractor[];
 }
 
+export type AiQueryBodyConversationHistoryItemRole =
+  (typeof AiQueryBodyConversationHistoryItemRole)[keyof typeof AiQueryBodyConversationHistoryItemRole];
+
+export const AiQueryBodyConversationHistoryItemRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export type AiQueryBodyConversationHistoryItem = {
+  role: AiQueryBodyConversationHistoryItemRole;
+  content: string;
+};
+
+export interface AiQueryBody {
+  /** @minLength 1 */
+  question: string;
+  conversationHistory?: AiQueryBodyConversationHistoryItem[];
+}
+
+export interface AiQueryResponse {
+  content: string;
+}
+
 /**
  * Opaque session token — Bearer <sid>.
  */

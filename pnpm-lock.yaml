@@ -193,6 +193,9 @@ importers:
       google-auth-library:
         specifier: ^10.6.1
         version: 10.6.1
+      openai:
+        specifier: ^6.29.0
+        version: 6.29.0(zod@4.3.6)
       openid-client:
         specifier: ^6.8.2
         version: 6.8.2

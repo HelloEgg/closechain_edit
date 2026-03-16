@@ -7,6 +7,7 @@ import subcontractorsRouter from "./subcontractors";
 import documentsRouter from "./documents";
 import csiRouter from "./csi";
 import clientPortalRouter from "./clientPortal";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(subcontractorsRouter);
 router.use(documentsRouter);
 router.use(csiRouter);
 router.use(clientPortalRouter);
+router.use(aiRouter);
 
 export default router;

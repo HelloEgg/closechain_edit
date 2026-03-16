@@ -7,6 +7,10 @@
  */
 
 export * from "./addDocumentSlotBody";
+export * from "./aiQueryBody";
+export * from "./aiQueryBodyConversationHistoryItem";
+export * from "./aiQueryBodyConversationHistoryItemRole";
+export * from "./aiQueryResponse";
 export * from "./approveProjectResponse";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";

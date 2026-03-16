@@ -18,6 +18,8 @@ import type {
 
 import type {
   AddDocumentSlotBody,
+  AiQueryBody,
+  AiQueryResponse,
   ApproveProjectResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
@@ -2802,3 +2804,89 @@ export function useClientPortalDownload<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Ask Manager AI a question about projects and documents
+ */
+export const getAiQueryUrl = () => {
+  return `/api/ai/query`;
+};
+
+export const aiQuery = async (
+  aiQueryBody: AiQueryBody,
+  options?: RequestInit,
+): Promise<AiQueryResponse> => {
+  return customFetch<AiQueryResponse>(getAiQueryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiQueryBody),
+  });
+};
+
+export const getAiQueryMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiQuery>>,
+    TError,
+    { data: BodyType<AiQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiQuery>>,
+  TError,
+  { data: BodyType<AiQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["aiQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiQuery>>,
+    { data: BodyType<AiQueryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiQuery(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiQuery>>
+>;
+export type AiQueryMutationBody = BodyType<AiQueryBody>;
+export type AiQueryMutationError = ErrorType<void>;
+
+/**
+ * @summary Ask Manager AI a question about projects and documents
+ */
+export const useAiQuery = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiQuery>>,
+    TError,
+    { data: BodyType<AiQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiQuery>>,
+  TError,
+  { data: BodyType<AiQueryBody> },
+  TContext
+> => {
+  return useMutation(getAiQueryMutationOptions(options));
+};
