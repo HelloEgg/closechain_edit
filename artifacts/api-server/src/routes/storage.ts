@@ -27,11 +27,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     return;
   }
 
-  const documentSlotId = req.body.documentSlotId;
-  if (!documentSlotId || typeof documentSlotId !== "number") {
-    res.status(400).json({ error: "documentSlotId is required" });
-    return;
-  }
+  const documentSlotId = parsed.data.documentSlotId;
 
   const docs = await db
     .select({ id: documentSlotsTable.id, projectId: projectsTable.id })

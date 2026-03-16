@@ -107,6 +107,7 @@ export const RequestUploadUrlBody = zod.object({
   name: zod.string().min(1),
   size: zod.number().min(1),
   contentType: zod.string().min(1),
+  documentSlotId: zod.number().describe("The document slot this upload is for"),
 });
 
 export const RequestUploadUrlResponse = zod.object({
@@ -117,6 +118,9 @@ export const RequestUploadUrlResponse = zod.object({
       name: zod.string().min(1),
       size: zod.number().min(1),
       contentType: zod.string().min(1),
+      documentSlotId: zod
+        .number()
+        .describe("The document slot this upload is for"),
     })
     .optional(),
 });

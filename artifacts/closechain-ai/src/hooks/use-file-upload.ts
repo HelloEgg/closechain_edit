@@ -14,7 +14,7 @@ export function useFileUpload() {
           size: file.size,
           contentType: file.type || "application/octet-stream",
           documentSlotId,
-        } as Record<string, unknown>
+        }
       });
 
       const uploadRes = await fetch(res.uploadURL, {

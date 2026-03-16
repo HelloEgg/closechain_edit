@@ -13,4 +13,6 @@ export interface UploadUrlRequest {
   size: number;
   /** @minLength 1 */
   contentType: string;
+  /** The document slot this upload is for */
+  documentSlotId: number;
 }
