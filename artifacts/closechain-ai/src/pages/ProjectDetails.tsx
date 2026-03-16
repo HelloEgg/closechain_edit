@@ -1,7 +1,7 @@
-import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
+import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteProject, useDeleteDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import { Building2, CheckCircle, ExternalLink, FileText, FolderKanban, HardHat, Calendar, Hash, Trash2 } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -15,10 +15,12 @@ export default function ProjectDetails() {
   const projectId = parseInt(params.id || "0", 10);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const { data: project, isLoading: projectLoading } = useGetProject(projectId);
   const { data: allDocs, isLoading: docsLoading } = useListAllProjectDocuments(projectId);
   const approveMutation = useApproveProject();
+  const deleteMutation = useDeleteProject();
 
   const handleApprove = () => {
     if (confirm("Are you sure you want to approve this closeout package? This will lock it and generate a client portal link.")) {
@@ -29,6 +31,21 @@ export default function ProjectDetails() {
         }
       });
     }
+  };
+
+  const handleDelete = () => {
+    if (!project) return;
+    if (!confirm(`Delete "${project.name}"? This will permanently remove the project, all subcontractors, and all documents. This cannot be undone.`)) return;
+    deleteMutation.mutate({ projectId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        toast({ title: "Project deleted" });
+        navigate("/dashboard");
+      },
+      onError: () => {
+        toast({ title: "Failed to delete project", variant: "destructive" });
+      },
+    });
   };
 
   if (projectLoading) return <AppLayout><div className="animate-pulse h-96 bg-secondary/50 rounded-2xl"></div></AppLayout>;
@@ -109,6 +126,15 @@ export default function ProjectDetails() {
                   <ExternalLink className="w-5 h-5" />
                 </a>
               )}
+
+              <button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                title="Delete project"
+                className="ml-2 p-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-border"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

@@ -1,11 +1,13 @@
-import { useListProjects, useListAllSubcontractors, type Project } from "@workspace/api-client-react";
+import { useListProjects, useListAllSubcontractors, useDeleteProject, type Project } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link, useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, Plus, ArrowRight, FolderKanban, HardHat, Search } from "lucide-react";
+import { Building2, Plus, ArrowRight, FolderKanban, HardHat, Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import * as Tabs from "@radix-ui/react-tabs";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { data: projects, isLoading } = useListProjects();
@@ -73,6 +75,25 @@ export default function Dashboard() {
 }
 
 function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Project[], isLoading: boolean, onCreateClick: () => void }) {
+  const deleteMutation = useDeleteProject();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleDelete = (e: React.MouseEvent, projectId: number, projectName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Delete "${projectName}"? This will permanently remove the project, all subcontractors, and all documents. This cannot be undone.`)) return;
+    deleteMutation.mutate({ projectId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        toast({ title: "Project deleted" });
+      },
+      onError: () => {
+        toast({ title: "Failed to delete project", variant: "destructive" });
+      },
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -103,7 +124,15 @@ function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Pr
       {projects.map((project) => (
         <Link key={project.id} href={`/projects/${project.id}`}>
           <div className="group bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col h-full cursor-pointer relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <button
+                onClick={(e) => handleDelete(e, project.id, project.name)}
+                disabled={deleteMutation.isPending}
+                title="Delete project"
+                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
               <ArrowRight className="text-primary w-5 h-5" />
             </div>
             
