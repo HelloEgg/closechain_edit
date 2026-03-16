@@ -119,10 +119,10 @@ export default function ProjectWizard() {
 
   const addCustomSub = () => {
     if (!customSubForm.vendorName || !customSubForm.csiCode) return;
-    const division = csiDivisions?.find(d => d.code === customSubForm.csiCode.padStart(2, "0"));
+    const division = csiDivisions?.find(d => d.code === customSubForm.csiCode);
     setSubs(prev => [...prev, {
       ...customSubForm,
-      csiCode: customSubForm.csiCode.padStart(2, "0"),
+      csiCode: customSubForm.csiCode,
       csiDivision: division?.name || "Custom",
       documentTypes: division?.requiredDocuments ? [...division.requiredDocuments] : [],
       selected: true,
@@ -277,7 +277,7 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-xl font-display font-bold">Select Subcontractors</h2>
-          <p className="text-sm text-muted-foreground mt-1">Choose CSI divisions applicable to this project. Enter vendor names for each selected trade.</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose trades applicable to this project. Enter vendor names for each selected trade.</p>
         </div>
         <span className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">{subs.filter((s: SubEntry) => s.selected).length} selected</span>
       </div>
@@ -316,7 +316,7 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
             <div className="grid grid-cols-3 gap-3">
               <input value={customSubForm.vendorName} onChange={e => setCustomSubForm({ ...customSubForm, vendorName: e.target.value })} placeholder="Vendor Name" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
               <input value={customSubForm.vendorCode} onChange={e => setCustomSubForm({ ...customSubForm, vendorCode: e.target.value })} placeholder="Vendor Code" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
-              <input value={customSubForm.csiCode} onChange={e => setCustomSubForm({ ...customSubForm, csiCode: e.target.value })} placeholder="CSI Code (e.g. 09)" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+              <input value={customSubForm.csiCode} onChange={e => setCustomSubForm({ ...customSubForm, csiCode: e.target.value })} placeholder="CSI Code (e.g. 260000)" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
             </div>
             <div className="flex gap-2">
               <button onClick={onAddCustom} className="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-medium">Add</button>

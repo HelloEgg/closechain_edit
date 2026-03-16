@@ -82,7 +82,7 @@ router.get("/subcontractors", async (req, res): Promise<void> => {
       .from(documentSlotsTable)
       .where(eq(documentSlotsTable.subcontractorId, sub.id));
     const stats = docs[0] || { total: 0, uploaded: 0, approved: 0 };
-    const division = getCsiDivision(sub.csiCode);
+    const division = await getCsiDivision(sub.csiCode);
     return {
       ...sub,
       csiDivision: division?.name || "Unknown",

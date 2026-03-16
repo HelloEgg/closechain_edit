@@ -31,8 +31,7 @@ export async function loadCsiDivisionsFromDb(): Promise<CsiDivisionConfig[]> {
 
 export async function getCsiDivision(csiCode: string): Promise<CsiDivisionConfig | undefined> {
   const divisions = await loadCsiDivisionsFromDb();
-  const divisionCode = csiCode.substring(0, 2).padStart(2, "0");
-  return divisions.find((d) => d.code === divisionCode);
+  return divisions.find((d) => d.code === csiCode);
 }
 
 export function clearCsiCache(): void {

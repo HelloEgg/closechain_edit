@@ -47,7 +47,7 @@ artifacts-monorepo/
 - **projects** — GC projects with name, jobNumber, clientName, description, address, endDate, status (active/approved), clientPortalToken
 - **subcontractors** — Linked to projects with vendorName, vendorCode, csiCode
 - **document_slots** — Linked to subcontractors with documentType, status (not_submitted/uploaded/approved), filePath, fileName
-- **csi_document_requirements** — DB-seeded CSI division-to-document-type mapping (csiCode, divisionName, documentType). Divisions 02–16 seeded.
+- **csi_document_requirements** — DB-seeded trade-to-document-type mapping (csiCode, divisionName, documentType). 32 trades seeded with 6-digit CSI codes (e.g. 260000 Electric, 230000 HVAC, 210000 Fire Protection). 118 total rows.
 
 ## Key Features
 
