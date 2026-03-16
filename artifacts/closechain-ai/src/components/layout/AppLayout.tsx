@@ -38,7 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-card border-b border-border">
         <div className="flex items-center gap-2">
-          <img src={logoIcon} alt="Closechain AI" className="h-10 w-auto" />
+          <img src={logoIcon} alt="Closechain AI" className="h-14 w-auto" />
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -53,8 +53,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex flex-col",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="px-4 py-4 hidden md:flex items-center">
-          <img src={logoFull} alt="Closechain AI" className="h-20 w-auto -ml-3" />
+        <div className="px-3 py-4 hidden md:flex items-center">
+          <img src={logoFull} alt="Closechain AI" className="h-28 w-auto -ml-4" />
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">
