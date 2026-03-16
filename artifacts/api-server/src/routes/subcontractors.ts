@@ -15,7 +15,7 @@ import { isProjectLocked } from "../lib/projectGuards";
 const router: IRouter = Router();
 
 async function autoAssignDocuments(subcontractorId: number, csiCode: string) {
-  const division = getCsiDivision(csiCode);
+  const division = await getCsiDivision(csiCode);
   if (!division) return;
 
   const docs = division.requiredDocuments.map((docType) => ({
@@ -40,7 +40,7 @@ async function getSubWithProgress(sub: typeof subcontractorsTable.$inferSelect) 
     .where(eq(documentSlotsTable.subcontractorId, sub.id));
 
   const stats = docs[0] || { total: 0, uploaded: 0, approved: 0 };
-  const division = getCsiDivision(sub.csiCode);
+  const division = await getCsiDivision(sub.csiCode);
 
   return {
     ...sub,

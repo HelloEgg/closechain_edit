@@ -44,7 +44,7 @@ router.get("/client-portal/:token", async (req, res): Promise<void> => {
         .where(eq(documentSlotsTable.subcontractorId, sub.id))
         .orderBy(documentSlotsTable.documentType);
 
-      const division = getCsiDivision(sub.csiCode);
+      const division = await getCsiDivision(sub.csiCode);
       const subTotal = docs.length;
       const subUploaded = docs.filter((d) => d.status === "uploaded" || d.status === "approved").length;
       const subApproved = docs.filter((d) => d.status === "approved").length;

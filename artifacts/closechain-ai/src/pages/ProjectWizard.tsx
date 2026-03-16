@@ -1,10 +1,19 @@
 import { useState, useMemo } from "react";
-import { useSetupProject, useListCsiDivisions } from "@workspace/api-client-react";
+import { useSetupProject, useListCsiDivisions, type CsiDivision } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+
+interface ProjectInfoData {
+  name: string;
+  jobNumber: string;
+  clientName: string;
+  address: string;
+  endDate: string;
+  description: string;
+}
 
 interface SubEntry {
   vendorName: string;
@@ -13,6 +22,27 @@ interface SubEntry {
   csiDivision: string;
   documentTypes: string[];
   selected: boolean;
+}
+
+interface StepSelectSubsProps {
+  subs: SubEntry[];
+  onToggle: (idx: number) => void;
+  onUpdateVendor: (idx: number, field: string, value: string) => void;
+  showCustomForm: boolean;
+  setShowCustomForm: (v: boolean) => void;
+  customSubForm: { vendorName: string; vendorCode: string; csiCode: string };
+  setCustomSubForm: (v: { vendorName: string; vendorCode: string; csiCode: string }) => void;
+  onAddCustom: () => void;
+  onRemoveCustom: (idx: number) => void;
+}
+
+interface StepCustomizeDocsProps {
+  subs: SubEntry[];
+  allSubs: SubEntry[];
+  setSubs: React.Dispatch<React.SetStateAction<SubEntry[]>>;
+  csiDivisions: CsiDivision[];
+  onToggleDoc: (subIdx: number, doc: string) => void;
+  onAddCustomDoc: (subIdx: number, doc: string) => void;
 }
 
 const STEPS = ["Project Info", "Select Subcontractors", "Customize Documents", "Review & Create"];
@@ -205,8 +235,8 @@ export default function ProjectWizard() {
   );
 }
 
-function StepProjectInfo({ info, onChange }: { info: any, onChange: (v: any) => void }) {
-  const update = (field: string, value: string) => onChange({ ...info, [field]: value });
+function StepProjectInfo({ info, onChange }: { info: ProjectInfoData, onChange: (v: ProjectInfoData) => void }) {
+  const update = (field: keyof ProjectInfoData, value: string) => onChange({ ...info, [field]: value });
 
   return (
     <div className="space-y-5">
@@ -241,7 +271,7 @@ function StepProjectInfo({ info, onChange }: { info: any, onChange: (v: any) => 
   );
 }
 
-function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setShowCustomForm, customSubForm, setCustomSubForm, onAddCustom, onRemoveCustom }: any) {
+function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setShowCustomForm, customSubForm, setCustomSubForm, onAddCustom, onRemoveCustom }: StepSelectSubsProps) {
   return (
     <div className="space-y-5">
       <div className="flex justify-between items-start">
@@ -303,7 +333,7 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
   );
 }
 
-function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, onAddCustomDoc }: any) {
+function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, onAddCustomDoc }: StepCustomizeDocsProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
   const [customDocInputs, setCustomDocInputs] = useState<Record<number, string>>({});
 
@@ -311,7 +341,7 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
 
   const csiDocsMap = useMemo(() => {
     const map: Record<string, string[]> = {};
-    csiDivisions.forEach((d: any) => { map[d.code] = d.requiredDocuments; });
+    csiDivisions.forEach((d: CsiDivision) => { map[d.code] = d.requiredDocuments; });
     return map;
   }, [csiDivisions]);
 
@@ -381,7 +411,7 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
   );
 }
 
-function StepReview({ projectInfo, subs }: { projectInfo: any, subs: SubEntry[] }) {
+function StepReview({ projectInfo, subs }: { projectInfo: ProjectInfoData, subs: SubEntry[] }) {
   const totalDocs = subs.reduce((sum, s) => sum + s.documentTypes.length, 0);
 
   return (

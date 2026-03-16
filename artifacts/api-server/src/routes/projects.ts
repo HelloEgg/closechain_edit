@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-zod";
 import crypto from "crypto";
 import { isProjectLocked } from "../lib/projectGuards";
-import { CSI_DIVISIONS } from "../lib/csiDivisions";
+import { loadCsiDivisionsFromDb, getCsiDivision } from "../lib/csiDivisions";
 
 const router: IRouter = Router();
 
@@ -72,17 +72,12 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
 
   const { subcontractors: subsData, ...projectData } = parsed.data;
 
-  const csiLookup = new Map(CSI_DIVISIONS.map(d => [d.code, d]));
+  const divisions = await loadCsiDivisionsFromDb();
+  const csiLookup = new Map(divisions.map(d => [d.code, d]));
   for (const subData of subsData) {
     const division = csiLookup.get(subData.csiCode);
     if (!division) {
       res.status(400).json({ error: `Invalid CSI code: ${subData.csiCode}` });
-      return;
-    }
-    const allowedDocs = new Set(division.requiredDocuments);
-    const invalid = subData.documentTypes.filter(dt => !allowedDocs.has(dt));
-    if (invalid.length > 0) {
-      res.status(400).json({ error: `Document types [${invalid.join(", ")}] are not valid for CSI ${subData.csiCode} (${division.name})` });
       return;
     }
   }
@@ -185,8 +180,7 @@ router.get("/projects/:projectId", async (req, res): Promise<void> => {
         .where(eq(documentSlotsTable.subcontractorId, sub.id));
 
       const stats = docs[0] || { total: 0, uploaded: 0, approved: 0 };
-      const { getCsiDivision } = await import("../lib/csiDivisions");
-      const division = getCsiDivision(sub.csiCode);
+      const division = await getCsiDivision(sub.csiCode);
       return {
         ...sub,
         csiDivision: division?.name || "Unknown",
