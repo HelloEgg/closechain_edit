@@ -17,6 +17,12 @@
     },
     {
       "path": "lib/object-storage-web"
+    },
+    {
+      "path": "./lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "./lib/integrations-openai-ai-react"
     }
   ]
 }
