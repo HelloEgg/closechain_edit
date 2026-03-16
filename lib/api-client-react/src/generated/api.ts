@@ -2703,3 +2703,102 @@ export function useGetClientPortal<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Download a file from the client portal (public, token-scoped)
+ */
+export const getClientPortalDownloadUrl = (token: string, filePath: string) => {
+  return `/api/client-portal/${token}/download/${filePath}`;
+};
+
+export const clientPortalDownload = async (
+  token: string,
+  filePath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getClientPortalDownloadUrl(token, filePath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getClientPortalDownloadQueryKey = (
+  token: string,
+  filePath: string,
+) => {
+  return [`/api/client-portal/${token}/download/${filePath}`] as const;
+};
+
+export const getClientPortalDownloadQueryOptions = <
+  TData = Awaited<ReturnType<typeof clientPortalDownload>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof clientPortalDownload>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getClientPortalDownloadQueryKey(token, filePath);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof clientPortalDownload>>
+  > = ({ signal }) =>
+    clientPortalDownload(token, filePath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(token && filePath),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof clientPortalDownload>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ClientPortalDownloadQueryResult = NonNullable<
+  Awaited<ReturnType<typeof clientPortalDownload>>
+>;
+export type ClientPortalDownloadQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Download a file from the client portal (public, token-scoped)
+ */
+
+export function useClientPortalDownload<
+  TData = Awaited<ReturnType<typeof clientPortalDownload>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof clientPortalDownload>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getClientPortalDownloadQueryOptions(
+    token,
+    filePath,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

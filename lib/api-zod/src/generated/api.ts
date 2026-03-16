@@ -628,3 +628,11 @@ export const GetClientPortalResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Download a file from the client portal (public, token-scoped)
+ */
+export const ClientPortalDownloadParams = zod.object({
+  token: zod.coerce.string(),
+  filePath: zod.coerce.string(),
+});

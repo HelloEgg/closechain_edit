@@ -142,11 +142,6 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
-
   const parsed = CreateSubcontractorBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -160,6 +155,11 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
 
   if (!project) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
@@ -192,11 +192,6 @@ router.post("/projects/:projectId/subcontractors/import", async (req, res): Prom
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
-
   const parsed = ImportSubcontractorsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -210,6 +205,11 @@ router.post("/projects/:projectId/subcontractors/import", async (req, res): Prom
 
   if (!project) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
@@ -255,11 +255,6 @@ router.delete("/projects/:projectId/subcontractors/:subcontractorId", async (req
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
-
   const [project] = await db
     .select()
     .from(projectsTable)
@@ -267,6 +262,11 @@ router.delete("/projects/:projectId/subcontractors/:subcontractorId", async (req
 
   if (!project) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
