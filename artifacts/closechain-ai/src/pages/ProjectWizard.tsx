@@ -71,7 +71,7 @@ export default function ProjectWizard() {
       vendorCode: "",
       csiCode: div.code,
       csiDivision: div.name,
-      documentTypes: [...div.requiredDocuments],
+      documentTypes: div.requiredDocuments.map((r) => r.documentType),
       selected: false,
     }));
     setSubs(defaultSubs);
@@ -120,7 +120,7 @@ export default function ProjectWizard() {
       ...customSubForm,
       csiCode: customSubForm.csiCode,
       csiDivision: division?.name || "Custom",
-      documentTypes: division?.requiredDocuments ? [...division.requiredDocuments] : [],
+      documentTypes: division?.requiredDocuments ? division.requiredDocuments.map((r) => r.documentType) : [],
       selected: true,
     }]);
     setCustomSubForm({ vendorName: "", vendorCode: "", csiCode: "" });
@@ -327,7 +327,7 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
 
   const csiDocsMap = useMemo(() => {
     const map: Record<string, string[]> = {};
-    csiDivisions.forEach((d: CsiDivision) => { map[d.code] = d.requiredDocuments; });
+    csiDivisions.forEach((d: CsiDivision) => { map[d.code] = d.requiredDocuments.map((r) => r.documentType); });
     return map;
   }, [csiDivisions]);
 

@@ -12,6 +12,8 @@ export interface DocumentSlotWithSubcontractor {
   subcontractorId: number;
   documentType: string;
   /** @nullable */
+  parentDocumentType?: string | null;
+  /** @nullable */
   packageSection?: string | null;
   status: DocumentSlotWithSubcontractorStatus;
   /** @nullable */

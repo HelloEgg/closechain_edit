@@ -9,6 +9,8 @@ import type { ClientPortalDocumentStatus } from "./clientPortalDocumentStatus";
 
 export interface ClientPortalDocument {
   documentType: string;
+  /** @nullable */
+  parentDocumentType?: string | null;
   status: ClientPortalDocumentStatus;
   /** @nullable */
   fileName?: string | null;

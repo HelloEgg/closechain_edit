@@ -176,18 +176,10 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
   const isLocked = project.status === 'approved';
 
   const groupedByType = useMemo(() => {
-    const TESTING_SECTION = "Testing/Demonstration";
-    const TESTING_SUB_ITEMS = new Set([
-      "HVAC Equipment Start Up Reports",
-      "HVAC Piping Pressure Test Reports",
-    ]);
-
-    const isTestingSubItem = (docType: string) => TESTING_SUB_ITEMS.has(docType);
-
     const map: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number, subTypes?: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number }> }> = {};
     for (const doc of documents) {
-      const isSubItem = isTestingSubItem(doc.documentType);
-      const groupKey = isSubItem ? TESTING_SECTION : doc.documentType;
+      const isSubItem = !!doc.parentDocumentType;
+      const groupKey = isSubItem ? doc.parentDocumentType! : doc.documentType;
 
       if (!map[groupKey]) {
         map[groupKey] = { docs: [], approved: 0, total: 0 };

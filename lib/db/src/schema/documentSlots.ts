@@ -7,6 +7,7 @@ export const documentSlotsTable = pgTable("document_slots", {
   id: serial("id").primaryKey(),
   subcontractorId: integer("subcontractor_id").notNull().references(() => subcontractorsTable.id, { onDelete: "cascade" }),
   documentType: varchar("document_type", { length: 255 }).notNull(),
+  parentDocumentType: varchar("parent_document_type", { length: 255 }),
   packageSection: varchar("package_section", { length: 100 }),
   status: varchar("status", { length: 20 }).notNull().default("not_submitted"),
   filePath: varchar("file_path", { length: 500 }),

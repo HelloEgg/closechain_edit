@@ -99,21 +99,33 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
       })
       .returning();
 
-    const docTypes = subData.documentTypes.length > 0 
-      ? subData.documentTypes 
-      : (csiLookup.get(subData.csiCode)?.requiredDocuments || []);
+    const division = csiLookup.get(subData.csiCode);
+    const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+    const parentLookup = new Map<string, string | null>();
+    if (division) {
+      for (const req of division.requiredDocuments) {
+        parentLookup.set(req.documentType, req.parentDocumentType ?? null);
+      }
+    }
 
-    if (docTypes.length > 0) {
-      const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+    const docTypeNames = subData.documentTypes.length > 0
+      ? subData.documentTypes
+      : (division?.requiredDocuments.map((r) => r.documentType) || []);
+
+    if (docTypeNames.length > 0) {
       await db.insert(documentSlotsTable).values(
-        docTypes.map((dt) => ({
-          subcontractorId: sub.id,
-          documentType: dt,
-          packageSection: mapDocumentTypeToSection(dt),
-          status: "not_submitted" as const,
-        }))
+        docTypeNames.map((dt) => {
+          const parent = parentLookup.get(dt) ?? null;
+          return {
+            subcontractorId: sub.id,
+            documentType: dt,
+            parentDocumentType: parent,
+            packageSection: mapDocumentTypeToSection(dt, parent),
+            status: "not_submitted" as const,
+          };
+        })
       );
-      totalDocs += docTypes.length;
+      totalDocs += docTypeNames.length;
     }
   }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   useCreateSubcontractor,
   useDeleteSubcontractor,
@@ -184,7 +184,7 @@ function AddSubDialog({
 
   const goToStep2 = () => {
     if (!vendorName.trim() || !csiCode) return;
-    const defaultDocs = selectedDivision?.requiredDocuments || [];
+    const defaultDocs = selectedDivision?.requiredDocuments.map((r) => r.documentType) || [];
     setSelectedDocs([...defaultDocs]);
     setStep(2);
   };
@@ -228,10 +228,23 @@ function AddSubDialog({
     );
   };
 
-  const allPossibleDocs = [
-    ...(selectedDivision?.requiredDocuments || []),
-    ...selectedDocs.filter((d) => !selectedDivision?.requiredDocuments.includes(d)),
-  ];
+  const knownDocTypes = new Set(selectedDivision?.requiredDocuments.map((r) => r.documentType) || []);
+  const customOnlyDocs = selectedDocs.filter((d) => !knownDocTypes.has(d));
+
+  const groupedRequiredDocs = useMemo(() => {
+    if (!selectedDivision) return [];
+    const parentMap: Record<string, string[]> = {};
+    const standalone: string[] = [];
+    for (const req of selectedDivision.requiredDocuments) {
+      if (req.parentDocumentType) {
+        if (!parentMap[req.parentDocumentType]) parentMap[req.parentDocumentType] = [];
+        parentMap[req.parentDocumentType].push(req.documentType);
+      } else {
+        standalone.push(req.documentType);
+      }
+    }
+    return { standalone, parentMap };
+  }, [selectedDivision]);
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -317,24 +330,53 @@ function AddSubDialog({
                 <p className="text-xs text-muted-foreground">Check the documents required for {vendorName}. Uncheck any that don't apply.</p>
               </div>
 
-              <div className="max-h-64 overflow-y-auto space-y-1 rounded-xl border border-border bg-background p-3">
-                {allPossibleDocs.map((doc) => {
-                  const isCustom = !selectedDivision?.requiredDocuments.includes(doc);
-                  return (
-                    <label key={doc} className="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedDocs.includes(doc)}
-                        onChange={() => toggleDoc(doc)}
-                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-foreground flex-1">{doc}</span>
-                      {isCustom && (
-                        <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">custom</span>
-                      )}
-                    </label>
-                  );
-                })}
+              <div className="max-h-72 overflow-y-auto space-y-1 rounded-xl border border-border bg-background p-3">
+                {groupedRequiredDocs && typeof groupedRequiredDocs === 'object' && !Array.isArray(groupedRequiredDocs) && (
+                  <>
+                    {(groupedRequiredDocs as { standalone: string[]; parentMap: Record<string, string[]> }).standalone.map((doc) => (
+                      <label key={doc} className="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedDocs.includes(doc)}
+                          onChange={() => toggleDoc(doc)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-foreground flex-1">{doc}</span>
+                      </label>
+                    ))}
+                    {Object.entries((groupedRequiredDocs as { standalone: string[]; parentMap: Record<string, string[]> }).parentMap).map(([parent, subDocs]) => (
+                      <div key={parent} className="mt-1">
+                        <div className="flex items-center gap-2 py-1 px-1">
+                          <div className="w-1 h-4 bg-primary/30 rounded-full shrink-0" />
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{parent}</span>
+                        </div>
+                        {subDocs.map((doc) => (
+                          <label key={doc} className="flex items-center gap-3 py-1.5 pl-5 pr-1 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={selectedDocs.includes(doc)}
+                              onChange={() => toggleDoc(doc)}
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-foreground flex-1">{doc}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {customOnlyDocs.map((doc) => (
+                  <label key={doc} className="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedDocs.includes(doc)}
+                      onChange={() => toggleDoc(doc)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm text-foreground flex-1">{doc}</span>
+                    <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">custom</span>
+                  </label>
+                ))}
               </div>
 
               <div className="flex gap-2">

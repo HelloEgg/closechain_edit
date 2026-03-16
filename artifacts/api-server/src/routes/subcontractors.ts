@@ -19,10 +19,11 @@ async function autoAssignDocuments(subcontractorId: number, csiCode: string) {
   const division = await getCsiDivision(csiCode);
   if (!division) return;
 
-  const docs = division.requiredDocuments.map((docType) => ({
+  const docs = division.requiredDocuments.map((req) => ({
     subcontractorId,
-    documentType: docType,
-    packageSection: mapDocumentTypeToSection(docType),
+    documentType: req.documentType,
+    parentDocumentType: req.parentDocumentType ?? null,
+    packageSection: mapDocumentTypeToSection(req.documentType, req.parentDocumentType),
     status: "not_submitted" as const,
   }));
 
@@ -178,13 +179,24 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
 
   if (customDocTypes && customDocTypes.length > 0) {
     const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+    const division = await getCsiDivision(sub.csiCode);
+    const parentLookup = new Map<string, string | null>();
+    if (division) {
+      for (const req of division.requiredDocuments) {
+        parentLookup.set(req.documentType, req.parentDocumentType ?? null);
+      }
+    }
     await db.insert(documentSlotsTable).values(
-      customDocTypes.map((dt) => ({
-        subcontractorId: sub.id,
-        documentType: dt,
-        packageSection: mapDocumentTypeToSection(dt),
-        status: "not_submitted" as const,
-      }))
+      customDocTypes.map((dt) => {
+        const parent = parentLookup.get(dt) ?? null;
+        return {
+          subcontractorId: sub.id,
+          documentType: dt,
+          parentDocumentType: parent,
+          packageSection: mapDocumentTypeToSection(dt, parent),
+          status: "not_submitted" as const,
+        };
+      })
     );
   } else {
     await autoAssignDocuments(sub.id, sub.csiCode);

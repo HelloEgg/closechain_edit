@@ -46,8 +46,8 @@ artifacts-monorepo/
 - **users** — Replit Auth user profiles (id, email, firstName, lastName, profileImageUrl)
 - **projects** — GC projects with name, jobNumber, clientName, description, address, endDate, status (active/approved), clientPortalToken
 - **subcontractors** — Linked to projects with vendorName, vendorCode, csiCode
-- **document_slots** — Linked to subcontractors with documentType, packageSection, status (not_submitted/uploaded/approved), filePath, fileName
-- **csi_document_requirements** — DB-seeded trade-to-document-type mapping (csiCode, divisionName, documentType). 32 trades seeded with 6-digit CSI codes (e.g. 260000 Electric, 230000 HVAC, 210000 Fire Protection). 118 total rows.
+- **document_slots** — Linked to subcontractors with documentType, parentDocumentType (nullable), packageSection, status (not_submitted/uploaded/approved), filePath, fileName
+- **csi_document_requirements** — DB-seeded trade-to-document-type mapping (csiCode, divisionName, documentType, parentDocumentType). 32 trades seeded with 6-digit CSI codes. Hierarchical: "Document Type Plus" items have parentDocumentType set; standalone items have null. 104 total rows (~21 are sub-items).
 - **uploaded_files** — Tracks uploaded files
 
 ## Key Features
@@ -57,7 +57,7 @@ artifacts-monorepo/
 - **Project Detail Dual Views**: Document Type View (grouped by doc type with drill-down) and Subcontractor View (grouped by sub with drill-down)
 - **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division
 - **9 Closeout Package Sections**: Permits, Inspection/Sign Off, As-Builts, Balancing Report, Testing/Demonstration, Equipment O&Ms, Project Submittals, Warranty, Architectural Maintenance Instructions
-- **HVAC Document Grouping**: HVAC-specific test reports (Start Up Reports, Piping Pressure Test Reports) are visually grouped as sub-items under "Testing/Demonstration" in Document Type views
+- **Hierarchical Document Types**: Document Type Plus items (sub-requirements under a Document Type) are stored with `parentDocumentType` and grouped visually in Document Type views. E.g., HVAC's "Equipment Start Up Reports" appears under "Testing/Demonstration". This is data-driven from the DB — no hardcoded trade logic in UI.
 - **Document Section View**: Toggle between "By Subcontractor" and "By Section" views on the document tracking board
 - **CSV/Excel Import**: Subcontractors can be bulk imported via CSV or Excel (.xlsx/.xls) with columns: Vendor Name, Vendor Code, CSI Code
 - **Secure File Upload**: Uses presigned URLs via Object Storage with intent tracking (30-min expiry); documentSlotId required to request upload URL

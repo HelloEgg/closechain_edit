@@ -60,6 +60,7 @@ router.get("/client-portal/:token", async (req, res): Promise<void> => {
         progress: subTotal > 0 ? Math.round((subUploaded / subTotal) * 100) : 0,
         documents: docs.map((d) => ({
           documentType: d.documentType,
+          parentDocumentType: d.parentDocumentType ?? null,
           status: d.status,
           fileName: d.fileName,
           filePath: d.filePath,

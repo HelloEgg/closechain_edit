@@ -5,9 +5,10 @@
  * Closechain AI API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CsiRequiredDocument } from "./csiRequiredDocument";
 
 export interface CsiDivision {
   code: string;
   name: string;
-  requiredDocuments: string[];
+  requiredDocuments: CsiRequiredDocument[];
 }

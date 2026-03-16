@@ -475,6 +475,7 @@ export const ListDocumentSlotsResponseItem = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  parentDocumentType: zod.string().nullish(),
   packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
@@ -529,6 +530,7 @@ export const UpdateDocumentSlotResponse = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  parentDocumentType: zod.string().nullish(),
   packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
@@ -574,6 +576,7 @@ export const ListAllProjectDocumentsResponseItem = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  parentDocumentType: zod.string().nullish(),
   packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
@@ -593,7 +596,12 @@ export const ListAllProjectDocumentsResponse = zod.array(
 export const ListCsiDivisionsResponseItem = zod.object({
   code: zod.string(),
   name: zod.string(),
-  requiredDocuments: zod.array(zod.string()),
+  requiredDocuments: zod.array(
+    zod.object({
+      documentType: zod.string(),
+      parentDocumentType: zod.string().nullish(),
+    }),
+  ),
 });
 export const ListCsiDivisionsResponse = zod.array(ListCsiDivisionsResponseItem);
 
@@ -630,6 +638,7 @@ export const GetClientPortalResponse = zod.object({
       documents: zod.array(
         zod.object({
           documentType: zod.string(),
+          parentDocumentType: zod.string().nullish(),
           status: zod.enum(["not_submitted", "uploaded", "approved"]),
           fileName: zod.string().nullish(),
           filePath: zod.string().nullish(),

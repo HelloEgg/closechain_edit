@@ -132,18 +132,11 @@ function SubcontractorPortalView({ portalData, token }: { portalData: ClientPort
 
 function DocTypePortalView({ portalData, token }: { portalData: ClientPortalData, token: string }) {
   const groupedByType = useMemo(() => {
-    const TESTING_SECTION = "Testing/Demonstration";
-    const TESTING_SUB_ITEMS = new Set([
-      "HVAC Equipment Start Up Reports",
-      "HVAC Piping Pressure Test Reports",
-    ]);
-    const isTestingSubItem = (docType: string) => TESTING_SUB_ITEMS.has(docType);
-
     const map: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number; subTypes?: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number }> }> = {};
     for (const sub of portalData.subcontractors) {
       for (const doc of sub.documents) {
-        const isSub = isTestingSubItem(doc.documentType);
-        const groupKey = isSub ? TESTING_SECTION : doc.documentType;
+        const isSub = !!doc.parentDocumentType;
+        const groupKey = isSub ? doc.parentDocumentType! : doc.documentType;
 
         if (!map[groupKey]) {
           map[groupKey] = { docs: [], approved: 0, total: 0 };

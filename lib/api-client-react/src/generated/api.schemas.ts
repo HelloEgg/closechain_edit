@@ -247,6 +247,8 @@ export interface DocumentSlot {
   subcontractorId: number;
   documentType: string;
   /** @nullable */
+  parentDocumentType?: string | null;
+  /** @nullable */
   packageSection?: string | null;
   status: DocumentSlotStatus;
   /** @nullable */
@@ -271,6 +273,8 @@ export interface DocumentSlotWithSubcontractor {
   id: number;
   subcontractorId: number;
   documentType: string;
+  /** @nullable */
+  parentDocumentType?: string | null;
   /** @nullable */
   packageSection?: string | null;
   status: DocumentSlotWithSubcontractorStatus;
@@ -305,10 +309,16 @@ export interface UpdateDocumentSlotBody {
   fileName?: string;
 }
 
+export interface CsiRequiredDocument {
+  documentType: string;
+  /** @nullable */
+  parentDocumentType?: string | null;
+}
+
 export interface CsiDivision {
   code: string;
   name: string;
-  requiredDocuments: string[];
+  requiredDocuments: CsiRequiredDocument[];
 }
 
 export type ClientPortalDocumentStatus =
@@ -322,6 +332,8 @@ export const ClientPortalDocumentStatus = {
 
 export interface ClientPortalDocument {
   documentType: string;
+  /** @nullable */
+  parentDocumentType?: string | null;
   status: ClientPortalDocumentStatus;
   /** @nullable */
   fileName?: string | null;

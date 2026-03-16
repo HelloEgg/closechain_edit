@@ -23,6 +23,7 @@ export * from "./clientPortalSubcontractor";
 export * from "./createProjectBody";
 export * from "./createSubcontractorBody";
 export * from "./csiDivision";
+export * from "./csiRequiredDocument";
 export * from "./documentSlot";
 export * from "./documentSlotStatus";
 export * from "./documentSlotWithSubcontractor";

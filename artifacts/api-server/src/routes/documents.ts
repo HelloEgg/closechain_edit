@@ -236,6 +236,7 @@ router.get("/projects/:projectId/documents", async (req, res): Promise<void> => 
       id: documentSlotsTable.id,
       subcontractorId: documentSlotsTable.subcontractorId,
       documentType: documentSlotsTable.documentType,
+      parentDocumentType: documentSlotsTable.parentDocumentType,
       packageSection: documentSlotsTable.packageSection,
       status: documentSlotsTable.status,
       filePath: documentSlotsTable.filePath,
