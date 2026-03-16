@@ -1,22 +1,20 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import { eq, and } from "drizzle-orm";
+import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
+import { isProjectLocked } from "../lib/projectGuards";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-/**
- * POST /storage/uploads/request-url
- *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
- */
+const pendingUploads = new Map<string, { userId: string; documentSlotId: number; expiresAt: number }>();
+
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -29,11 +27,40 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     return;
   }
 
+  const documentSlotId = req.body.documentSlotId;
+  if (!documentSlotId || typeof documentSlotId !== "number") {
+    res.status(400).json({ error: "documentSlotId is required" });
+    return;
+  }
+
+  const docs = await db
+    .select({ id: documentSlotsTable.id, projectId: projectsTable.id })
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
+    .where(and(eq(documentSlotsTable.id, documentSlotId), eq(projectsTable.userId, req.user.id)));
+
+  if (docs.length === 0) {
+    res.status(404).json({ error: "Document slot not found" });
+    return;
+  }
+
+  if (await isProjectLocked(docs[0].projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
+    return;
+  }
+
   try {
     const { name, size, contentType } = parsed.data;
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+    pendingUploads.set(objectPath, {
+      userId: req.user.id,
+      documentSlotId,
+      expiresAt: Date.now() + 30 * 60 * 1000,
+    });
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -47,6 +74,18 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
 });
+
+export function validateUploadIntent(objectPath: string, userId: string, documentSlotId: number): boolean {
+  const intent = pendingUploads.get(objectPath);
+  if (!intent) return false;
+  if (intent.userId !== userId || intent.documentSlotId !== documentSlotId) return false;
+  if (Date.now() > intent.expiresAt) {
+    pendingUploads.delete(objectPath);
+    return false;
+  }
+  pendingUploads.delete(objectPath);
+  return true;
+}
 
 /**
  * GET /storage/public-objects/*
@@ -101,8 +140,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       return;
     }
 
-    const { eq, and } = await import("drizzle-orm");
-    const { db, projectsTable, subcontractorsTable, documentSlotsTable } = await import("@workspace/db");
     const docs = await db
       .select({ id: documentSlotsTable.id })
       .from(documentSlotsTable)

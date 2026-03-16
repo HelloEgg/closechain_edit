@@ -110,7 +110,7 @@ function DocumentRow({ doc, projectId, isLocked }: { doc: DocumentSlotWithSubcon
     if (!file) return;
 
     try {
-      const { objectPath, fileName } = await uploadFile(file);
+      const { objectPath, fileName } = await uploadFile(file, doc.id);
       
       updateMutation.mutate({
         documentSlotId: doc.id,
