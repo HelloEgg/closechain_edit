@@ -219,6 +219,8 @@ export interface CreateSubcontractorBody {
   vendorCode: string;
   /** @minLength 1 */
   csiCode: string;
+  /** Optional override for auto-assigned document types from CSI code */
+  documentTypes?: string[];
 }
 
 export interface ImportSubcontractorsBody {

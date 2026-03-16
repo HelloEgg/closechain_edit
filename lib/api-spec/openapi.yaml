@@ -1144,6 +1144,11 @@ components:
         csiCode:
           type: string
           minLength: 1
+        documentTypes:
+          type: array
+          items:
+            type: string
+          description: Optional override for auto-assigned document types from CSI code
     ImportSubcontractorsBody:
       type: object
       required: [subcontractors]

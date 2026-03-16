@@ -403,6 +403,12 @@ export const CreateSubcontractorBody = zod.object({
   vendorName: zod.string().min(1),
   vendorCode: zod.string().min(1),
   csiCode: zod.string().min(1),
+  documentTypes: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Optional override for auto-assigned document types from CSI code",
+    ),
 });
 
 /**
@@ -425,6 +431,12 @@ export const ImportSubcontractorsBody = zod.object({
       vendorName: zod.string().min(1),
       vendorCode: zod.string().min(1),
       csiCode: zod.string().min(1),
+      documentTypes: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Optional override for auto-assigned document types from CSI code",
+        ),
     }),
   ),
 });

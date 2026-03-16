@@ -169,12 +169,26 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
+  const { documentTypes: customDocTypes, ...subFields } = parsed.data;
+
   const [sub] = await db
     .insert(subcontractorsTable)
-    .values({ ...parsed.data, projectId: params.data.projectId })
+    .values({ ...subFields, projectId: params.data.projectId })
     .returning();
 
-  await autoAssignDocuments(sub.id, sub.csiCode);
+  if (customDocTypes && customDocTypes.length > 0) {
+    const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+    await db.insert(documentSlotsTable).values(
+      customDocTypes.map((dt) => ({
+        subcontractorId: sub.id,
+        documentType: dt,
+        packageSection: mapDocumentTypeToSection(dt),
+        status: "not_submitted" as const,
+      }))
+    );
+  } else {
+    await autoAssignDocuments(sub.id, sub.csiCode);
+  }
 
   const result = await getSubWithProgress(sub);
   res.status(201).json(result);
