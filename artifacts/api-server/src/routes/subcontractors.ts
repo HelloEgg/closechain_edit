@@ -15,12 +15,14 @@ import { isProjectLocked } from "../lib/projectGuards";
 const router: IRouter = Router();
 
 async function autoAssignDocuments(subcontractorId: number, csiCode: string) {
+  const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
   const division = await getCsiDivision(csiCode);
   if (!division) return;
 
   const docs = division.requiredDocuments.map((docType) => ({
     subcontractorId,
     documentType: docType,
+    packageSection: mapDocumentTypeToSection(docType),
     status: "not_submitted" as const,
   }));
 

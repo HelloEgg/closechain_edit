@@ -11,6 +11,8 @@ export interface DocumentSlot {
   id: number;
   subcontractorId: number;
   documentType: string;
+  /** @nullable */
+  packageSection?: string | null;
   status: DocumentSlotStatus;
   /** @nullable */
   filePath?: string | null;

@@ -724,6 +724,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CsiDivision"
+  /closeout-sections:
+    get:
+      operationId: listCloseoutSections
+      tags: [csi]
+      summary: List standard closeout package sections
+      responses:
+        "200":
+          description: Closeout package section names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
   /client-portal/{token}:
     get:
       operationId: getClientPortal
@@ -1106,6 +1120,8 @@ components:
           type: integer
         documentType:
           type: string
+        packageSection:
+          type: [string, 'null']
         status:
           type: string
           enum: [not_submitted, uploaded, approved]
@@ -1129,6 +1145,8 @@ components:
           type: integer
         documentType:
           type: string
+        packageSection:
+          type: [string, 'null']
         status:
           type: string
           enum: [not_submitted, uploaded, approved]

@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { isProjectLocked } from "../lib/projectGuards";
 import { validateUploadIntent } from "./storage";
+import { mapDocumentTypeToSection } from "../lib/closeoutSections";
 
 const router: IRouter = Router();
 
@@ -101,6 +102,7 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
     .values({
       subcontractorId: params.data.subcontractorId,
       documentType: parsed.data.documentType,
+      packageSection: mapDocumentTypeToSection(parsed.data.documentType),
       status: "not_submitted",
     })
     .returning();
@@ -234,6 +236,7 @@ router.get("/projects/:projectId/documents", async (req, res): Promise<void> => 
       id: documentSlotsTable.id,
       subcontractorId: documentSlotsTable.subcontractorId,
       documentType: documentSlotsTable.documentType,
+      packageSection: documentSlotsTable.packageSection,
       status: documentSlotsTable.status,
       filePath: documentSlotsTable.filePath,
       fileName: documentSlotsTable.fileName,

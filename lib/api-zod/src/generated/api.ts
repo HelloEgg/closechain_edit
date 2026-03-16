@@ -465,6 +465,7 @@ export const ListDocumentSlotsResponseItem = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
   fileName: zod.string().nullish(),
@@ -518,6 +519,7 @@ export const UpdateDocumentSlotResponse = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
   fileName: zod.string().nullish(),
@@ -562,6 +564,7 @@ export const ListAllProjectDocumentsResponseItem = zod.object({
   id: zod.number(),
   subcontractorId: zod.number(),
   documentType: zod.string(),
+  packageSection: zod.string().nullish(),
   status: zod.enum(["not_submitted", "uploaded", "approved"]),
   filePath: zod.string().nullish(),
   fileName: zod.string().nullish(),
@@ -583,6 +586,14 @@ export const ListCsiDivisionsResponseItem = zod.object({
   requiredDocuments: zod.array(zod.string()),
 });
 export const ListCsiDivisionsResponse = zod.array(ListCsiDivisionsResponseItem);
+
+/**
+ * @summary List standard closeout package sections
+ */
+export const ListCloseoutSectionsResponseItem = zod.string();
+export const ListCloseoutSectionsResponse = zod.array(
+  ListCloseoutSectionsResponseItem,
+);
 
 /**
  * @summary Get client portal data (public, no auth needed)

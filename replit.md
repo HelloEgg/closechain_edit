@@ -46,8 +46,9 @@ artifacts-monorepo/
 - **users** — Replit Auth user profiles (id, email, firstName, lastName, profileImageUrl)
 - **projects** — GC projects with name, jobNumber, clientName, description, address, endDate, status (active/approved), clientPortalToken
 - **subcontractors** — Linked to projects with vendorName, vendorCode, csiCode
-- **document_slots** — Linked to subcontractors with documentType, status (not_submitted/uploaded/approved), filePath, fileName
+- **document_slots** — Linked to subcontractors with documentType, packageSection, status (not_submitted/uploaded/approved), filePath, fileName
 - **csi_document_requirements** — DB-seeded trade-to-document-type mapping (csiCode, divisionName, documentType). 32 trades seeded with 6-digit CSI codes (e.g. 260000 Electric, 230000 HVAC, 210000 Fire Protection). 118 total rows.
+- **uploaded_files** — Tracks uploaded files
 
 ## Key Features
 
@@ -55,8 +56,10 @@ artifacts-monorepo/
 - **Dashboard Dual Views**: Project View (card grid) and Subcontractor View (aggregated cross-project table)
 - **Project Detail Dual Views**: Document Type View (grouped by doc type with drill-down) and Subcontractor View (grouped by sub with drill-down)
 - **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division
-- **CSV Import**: Subcontractors can be bulk imported via CSV with columns: Vendor Name, Vendor Code, CSI Code
-- **File Upload**: Uses presigned URLs via Object Storage for direct uploads
+- **9 Closeout Package Sections**: Permits, Inspection/Sign Off, As-Builts, Balancing Report, Testing/Demonstration, Equipment O&Ms, Project Submittals, Warranty, Architectural Maintenance Instructions
+- **Document Section View**: Toggle between "By Subcontractor" and "By Section" views on the document tracking board
+- **CSV/Excel Import**: Subcontractors can be bulk imported via CSV or Excel (.xlsx/.xls) with columns: Vendor Name, Vendor Code, CSI Code
+- **Secure File Upload**: Uses presigned URLs via Object Storage with intent tracking (30-min expiry); documentSlotId required to request upload URL
 - **GC Approval Flow**: Approve a project to generate a client portal token/link. Approved projects are mutation-locked.
 - **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token` with dual sorting (By Subcontractor / By Document Type)
 - **Approval Locking**: All mutation endpoints (create/update/delete subcontractors, documents, project updates) reject changes when project.status === 'approved'
@@ -80,10 +83,11 @@ All routes mounted at `/api`:
 - `PATCH/DELETE /documents/:documentSlotId` — Update/delete doc slot
 - `GET /projects/:projectId/documents` — List all project documents (filterable)
 - `GET /csi/divisions` — List all CSI divisions with required documents
+- `GET /closeout-sections` — List all 9 closeout package sections
 - `GET /client-portal/:token` — Public client portal data
 - `GET /client-portal/:token/download/*path` — Public file download (token-scoped)
 - `POST /storage/uploads/request-url` — Request presigned upload URL
-- `GET /storage/objects/public/*` — Get public object
+- `GET /storage/public-objects/*filePath` — Get public object
 - `GET /storage/objects/*` — Get storage object (authed)
 
 ## Security
@@ -111,5 +115,6 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run typecheck` — Full typecheck
 - `pnpm --filter @workspace/api-server run dev` — API server
 - `pnpm --filter @workspace/closechain-ai run dev` — Frontend
-- `pnpm --filter @workspace/api-spec run codegen` — Regenerate API client
-- `pnpm --filter @workspace/db run push` — Push DB schema changes
+- `pnpm --filter @workspace/api-spec run codegen` — Regenerate API client from OpenAPI spec
+- `pnpm --filter @workspace/db run push` — Push DB schema changes to PostgreSQL
+- After codegen/schema changes, rebuild composite declarations: `pnpm --filter @workspace/db exec tsc --build --force && pnpm --filter @workspace/api-zod exec tsc --build --force && pnpm --filter @workspace/api-client-react exec tsc --build --force`

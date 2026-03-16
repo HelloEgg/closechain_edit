@@ -62,7 +62,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
       RequestUploadUrlResponse.parse({
         uploadURL,
         objectPath,
-        metadata: { name, size, contentType },
+        metadata: { name, size, contentType, documentSlotId },
       }),
     );
   } catch (error) {

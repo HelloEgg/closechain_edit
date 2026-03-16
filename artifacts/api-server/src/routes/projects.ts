@@ -104,10 +104,12 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
       : (csiLookup.get(subData.csiCode)?.requiredDocuments || []);
 
     if (docTypes.length > 0) {
+      const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
       await db.insert(documentSlotsTable).values(
         docTypes.map((dt) => ({
           subcontractorId: sub.id,
           documentType: dt,
+          packageSection: mapDocumentTypeToSection(dt),
           status: "not_submitted" as const,
         }))
       );

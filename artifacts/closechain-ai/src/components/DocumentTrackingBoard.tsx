@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { type ProjectDetail, type DocumentSlotWithSubcontractor, useUpdateDocumentSlot, useAddDocumentSlot, useDeleteDocumentSlot } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { FileText, UploadCloud, CheckCircle, Clock, Plus, Download, HardHat, Trash2 } from "lucide-react";
+import { FileText, UploadCloud, CheckCircle, Clock, Plus, Download, HardHat, Trash2, FolderOpen, Users } from "lucide-react";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import * as Dialog from "@radix-ui/react-dialog";
+
+const PACKAGE_SECTIONS = [
+  "Permits",
+  "Inspection/Sign Off",
+  "As-Builts",
+  "Balancing Report",
+  "Testing/Demonstration",
+  "Equipment O&Ms",
+  "Project Submittals",
+  "Warranty",
+  "Architectural Maintenance Instructions",
+];
+
+type ViewMode = "subcontractor" | "section";
 
 export function DocumentTrackingBoard({ 
   project, 
@@ -17,25 +31,56 @@ export function DocumentTrackingBoard({
   isLoading: boolean 
 }) {
   const [expandedSub, setExpandedSub] = useState<number | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("subcontractor");
+
+  const groupedBySubcontractor = useMemo(() => {
+    return documents.reduce((acc, doc) => {
+      if (!acc[doc.subcontractorId]) acc[doc.subcontractorId] = [];
+      acc[doc.subcontractorId].push(doc);
+      return acc;
+    }, {} as Record<number, DocumentSlotWithSubcontractor[]>);
+  }, [documents]);
+
+  const groupedBySection = useMemo(() => {
+    const groups: Record<string, DocumentSlotWithSubcontractor[]> = {};
+    for (const section of PACKAGE_SECTIONS) {
+      groups[section] = [];
+    }
+    groups["Other"] = [];
+    for (const doc of documents) {
+      const section = doc.packageSection || "Other";
+      if (!groups[section]) groups[section] = [];
+      groups[section].push(doc);
+    }
+    return groups;
+  }, [documents]);
 
   if (isLoading) return <div className="h-64 animate-pulse bg-secondary/50 rounded-2xl"></div>;
 
-  // Group documents by subcontractor
-  const groupedDocs = documents.reduce((acc, doc) => {
-    if (!acc[doc.subcontractorId]) acc[doc.subcontractorId] = [];
-    acc[doc.subcontractorId].push(doc);
-    return acc;
-  }, {} as Record<number, DocumentSlotWithSubcontractor[]>);
-
   return (
     <div className="space-y-4">
-      {project.subcontractors.map((sub) => {
-        const subsDocs = groupedDocs[sub.id] || [];
+      <div className="flex gap-2 mb-2">
+        <button
+          onClick={() => setViewMode("subcontractor")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === "subcontractor" ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+        >
+          <Users className="w-4 h-4" /> By Subcontractor
+        </button>
+        <button
+          onClick={() => setViewMode("section")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === "section" ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+        >
+          <FolderOpen className="w-4 h-4" /> By Section
+        </button>
+      </div>
+
+      {viewMode === "subcontractor" && project.subcontractors.map((sub) => {
+        const subsDocs = groupedBySubcontractor[sub.id] || [];
         const isExpanded = expandedSub === sub.id;
         
         return (
           <div key={sub.id} className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
-            {/* Header / Accordion Trigger */}
             <div 
               onClick={() => setExpandedSub(isExpanded ? null : sub.id)}
               className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-secondary/30 transition-colors"
@@ -69,7 +114,6 @@ export function DocumentTrackingBoard({
               </div>
             </div>
 
-            {/* Expanded Content */}
             {isExpanded && (
               <div className="border-t border-border bg-background p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -94,11 +138,68 @@ export function DocumentTrackingBoard({
           </div>
         );
       })}
+
+      {viewMode === "section" && [...PACKAGE_SECTIONS, ...((groupedBySection["Other"]?.length ?? 0) > 0 ? ["Other"] : [])].map((section) => {
+        const sectionDocs = groupedBySection[section] || [];
+        const isExpanded = expandedSection === section;
+        const uploaded = sectionDocs.filter(d => d.status === "uploaded" || d.status === "approved").length;
+        const approved = sectionDocs.filter(d => d.status === "approved").length;
+        const progress = sectionDocs.length > 0 ? Math.round((uploaded / sectionDocs.length) * 100) : 0;
+
+        return (
+          <div key={section} className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
+            <div
+              onClick={() => setExpandedSection(isExpanded ? null : section)}
+              className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-secondary/30 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <FolderOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">{section}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{sectionDocs.length} document{sectionDocs.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 md:w-1/3 justify-end">
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-bold text-foreground">{approved} / {sectionDocs.length}</p>
+                  <p className="text-xs text-muted-foreground">Approved</p>
+                </div>
+                <div className="flex-1 max-w-[150px]">
+                  <div className="flex justify-end mb-1">
+                    <span className="text-xs font-bold text-primary">{progress}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div className="border-t border-border bg-background p-6">
+                <div className="grid gap-3">
+                  {sectionDocs.map(doc => (
+                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={project.status === 'approved'} showVendor />
+                  ))}
+                  {sectionDocs.length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground text-sm border-2 border-dashed border-border rounded-xl">
+                      No documents in this section yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function DocumentRow({ doc, projectId, isLocked }: { doc: DocumentSlotWithSubcontractor, projectId: number, isLocked: boolean }) {
+function DocumentRow({ doc, projectId, isLocked, showVendor }: { doc: DocumentSlotWithSubcontractor, projectId: number, isLocked: boolean, showVendor?: boolean }) {
   const { uploadFile, isUploading } = useFileUpload();
   const updateMutation = useUpdateDocumentSlot();
   const deleteMutation = useDeleteDocumentSlot();
@@ -150,6 +251,7 @@ function DocumentRow({ doc, projectId, isLocked }: { doc: DocumentSlotWithSubcon
         <StatusBadge status={doc.status} />
         <div>
           <p className="font-semibold text-foreground">{doc.documentType}</p>
+          {showVendor && <p className="text-xs text-primary/80 mt-0.5">{doc.vendorName} ({doc.csiCode})</p>}
           {doc.fileName && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">{doc.fileName}</p>}
         </div>
       </div>

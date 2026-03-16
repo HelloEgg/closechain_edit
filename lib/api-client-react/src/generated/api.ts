@@ -2543,6 +2543,81 @@ export function useListCsiDivisions<
 }
 
 /**
+ * @summary List standard closeout package sections
+ */
+export const getListCloseoutSectionsUrl = () => {
+  return `/api/closeout-sections`;
+};
+
+export const listCloseoutSections = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListCloseoutSectionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCloseoutSectionsQueryKey = () => {
+  return [`/api/closeout-sections`] as const;
+};
+
+export const getListCloseoutSectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCloseoutSections>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCloseoutSections>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCloseoutSectionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCloseoutSections>>
+  > = ({ signal }) => listCloseoutSections({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCloseoutSections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCloseoutSectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCloseoutSections>>
+>;
+export type ListCloseoutSectionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List standard closeout package sections
+ */
+
+export function useListCloseoutSections<
+  TData = Awaited<ReturnType<typeof listCloseoutSections>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCloseoutSections>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCloseoutSectionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get client portal data (public, no auth needed)
  */
 export const getGetClientPortalUrl = (token: string) => {
