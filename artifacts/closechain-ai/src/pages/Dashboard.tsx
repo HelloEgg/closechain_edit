@@ -1,4 +1,4 @@
-import { useListProjects, useListAllSubcontractors } from "@workspace/api-client-react";
+import { useListProjects, useListAllSubcontractors, type Project } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link, useLocation } from "wouter";
@@ -72,7 +72,7 @@ export default function Dashboard() {
   );
 }
 
-function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: any[], isLoading: boolean, onCreateClick: () => void }) {
+function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Project[], isLoading: boolean, onCreateClick: () => void }) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

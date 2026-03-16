@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import crypto from "crypto";
 import { isProjectLocked } from "../lib/projectGuards";
+import { CSI_DIVISIONS } from "../lib/csiDivisions";
 
 const router: IRouter = Router();
 
@@ -71,6 +72,21 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
 
   const { subcontractors: subsData, ...projectData } = parsed.data;
 
+  const csiLookup = new Map(CSI_DIVISIONS.map(d => [d.code, d]));
+  for (const subData of subsData) {
+    const division = csiLookup.get(subData.csiCode);
+    if (!division) {
+      res.status(400).json({ error: `Invalid CSI code: ${subData.csiCode}` });
+      return;
+    }
+    const allowedDocs = new Set(division.requiredDocuments);
+    const invalid = subData.documentTypes.filter(dt => !allowedDocs.has(dt));
+    if (invalid.length > 0) {
+      res.status(400).json({ error: `Document types [${invalid.join(", ")}] are not valid for CSI ${subData.csiCode} (${division.name})` });
+      return;
+    }
+  }
+
   const [project] = await db
     .insert(projectsTable)
     .values({ ...projectData, userId: req.user.id })
@@ -88,15 +104,19 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
       })
       .returning();
 
-    if (subData.documentTypes.length > 0) {
+    const docTypes = subData.documentTypes.length > 0 
+      ? subData.documentTypes 
+      : (csiLookup.get(subData.csiCode)?.requiredDocuments || []);
+
+    if (docTypes.length > 0) {
       await db.insert(documentSlotsTable).values(
-        subData.documentTypes.map((dt) => ({
+        docTypes.map((dt) => ({
           subcontractorId: sub.id,
           documentType: dt,
           status: "not_submitted" as const,
         }))
       );
-      totalDocs += subData.documentTypes.length;
+      totalDocs += docTypes.length;
     }
   }
 

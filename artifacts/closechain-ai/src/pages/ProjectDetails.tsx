@@ -1,4 +1,4 @@
-import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteDocumentSlot } from "@workspace/api-client-react";
+import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams } from "wouter";
@@ -146,7 +146,7 @@ export default function ProjectDetails() {
   );
 }
 
-function DocumentTypeView({ project, documents, isLoading, projectId }: { project: any, documents: any[], isLoading: boolean, projectId: number }) {
+function DocumentTypeView({ project, documents, isLoading, projectId }: { project: ProjectDetail, documents: DocumentSlotWithSubcontractor[], isLoading: boolean, projectId: number }) {
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const deleteMutation = useDeleteDocumentSlot();
   const queryClient = useQueryClient();
@@ -154,7 +154,7 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
   const isLocked = project.status === 'approved';
 
   const groupedByType = useMemo(() => {
-    const map: Record<string, { docs: any[], approved: number, total: number }> = {};
+    const map: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number }> = {};
     for (const doc of documents) {
       if (!map[doc.documentType]) {
         map[doc.documentType] = { docs: [], approved: 0, total: 0 };
@@ -219,7 +219,7 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
             {isExpanded && (
               <div className="border-t border-border bg-background p-6">
                 <div className="grid gap-3">
-                  {data.docs.map((doc: any) => (
+                  {data.docs.map((doc: DocumentSlotWithSubcontractor) => (
                     <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-colors gap-3">
                       <div className="flex items-center gap-3">
                         <StatusBadge status={doc.status} />

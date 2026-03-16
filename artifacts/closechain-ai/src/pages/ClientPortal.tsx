@@ -1,4 +1,4 @@
-import { useGetClientPortal } from "@workspace/api-client-react";
+import { useGetClientPortal, type ClientPortalData, type ClientPortalSubcontractor, type ClientPortalDocument } from "@workspace/api-client-react";
 import { useParams } from "wouter";
 import { Building2, CheckCircle2, Download, FileText, HardHat } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -87,10 +87,10 @@ export default function ClientPortal() {
   );
 }
 
-function SubcontractorPortalView({ portalData, token }: { portalData: any, token: string }) {
+function SubcontractorPortalView({ portalData, token }: { portalData: ClientPortalData, token: string }) {
   return (
     <div className="space-y-6">
-      {portalData.subcontractors.map((sub: any, idx: number) => (
+      {portalData.subcontractors.map((sub: ClientPortalSubcontractor, idx: number) => (
         <div key={idx} className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="bg-secondary/50 px-6 py-4 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -111,7 +111,7 @@ function SubcontractorPortalView({ portalData, token }: { portalData: any, token
           <div className="p-0">
             <table className="w-full text-left">
               <tbody className="divide-y divide-border">
-                {sub.documents.map((doc: any, dIdx: number) => (
+                {sub.documents.map((doc: ClientPortalDocument, dIdx: number) => (
                   <PortalDocRow key={dIdx} doc={doc} token={token} />
                 ))}
                 {sub.documents.length === 0 && (
@@ -130,9 +130,9 @@ function SubcontractorPortalView({ portalData, token }: { portalData: any, token
   );
 }
 
-function DocTypePortalView({ portalData, token }: { portalData: any, token: string }) {
+function DocTypePortalView({ portalData, token }: { portalData: ClientPortalData, token: string }) {
   const groupedByType = useMemo(() => {
-    const map: Record<string, { docs: { doc: any; sub: any }[]; approved: number; total: number }> = {};
+    const map: Record<string, { docs: { doc: ClientPortalDocument; sub: ClientPortalSubcontractor }[]; approved: number; total: number }> = {};
     for (const sub of portalData.subcontractors) {
       for (const doc of sub.documents) {
         if (!map[doc.documentType]) {
@@ -210,7 +210,7 @@ function DocTypePortalView({ portalData, token }: { portalData: any, token: stri
   );
 }
 
-function PortalDocRow({ doc, token }: { doc: any, token: string }) {
+function PortalDocRow({ doc, token }: { doc: ClientPortalDocument, token: string }) {
   return (
     <tr className="hover:bg-gray-50/50 transition-colors">
       <td className="px-6 py-4">
