@@ -104,7 +104,7 @@ All routes mounted at `/api`:
 - `/login` — Replit Auth login page
 - `/dashboard` — Project View + Subcontractor View tabs
 - `/projects/new` — Multi-step project creation wizard
-- `/projects/:id` — Project detail with Document Type View + Subcontractor View + Directory tabs
+- `/projects/:id` — Project detail with Document Type View + Subcontractor View tabs
 - `/client-portal/:token` — Public client portal with dual sorting
 
 ## TypeScript & Composite Projects

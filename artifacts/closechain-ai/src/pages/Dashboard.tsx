@@ -146,13 +146,20 @@ function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Pr
             <h3 className="text-xl font-display font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
               {project.name}
             </h3>
-            {project.jobNumber && <p className="text-xs text-muted-foreground mb-1">Job: {project.jobNumber}</p>}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mb-1">
+              {project.jobNumber && <p className="text-xs text-muted-foreground">Job: {project.jobNumber}</p>}
+              {project.endDate && <p className="text-xs text-muted-foreground">End: {project.endDate}</p>}
+            </div>
             <p className="text-sm text-muted-foreground mb-6 line-clamp-1">{project.clientName}</p>
             
             <div className="mt-auto pt-6 border-t border-border/50">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{project.approvedDocuments} <span className="text-muted-foreground font-normal">/ {project.totalDocuments} docs</span></p>
+                <div className="text-sm">
+                  <span className="font-semibold text-foreground">{project.uploadedDocuments}</span>
+                  <span className="text-muted-foreground"> received</span>
+                  <span className="text-muted-foreground mx-1">/</span>
+                  <span className="font-semibold text-foreground">{project.totalDocuments - project.uploadedDocuments}</span>
+                  <span className="text-muted-foreground"> open</span>
                 </div>
                 <span className="text-xs font-bold text-primary">{Math.round(project.progress)}%</span>
               </div>

@@ -1,14 +1,15 @@
-import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteProject, useDeleteDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
+import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteProject, useDeleteDocumentSlot, useUpdateDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, CheckCircle, ExternalLink, FileText, FolderKanban, HardHat, Calendar, Hash, Trash2 } from "lucide-react";
+import { Building2, CheckCircle, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { SubcontractorList } from "@/components/SubcontractorList";
 import { DocumentTrackingBoard } from "@/components/DocumentTrackingBoard";
+import { useFileUpload } from "@/hooks/use-file-upload";
 
 export default function ProjectDetails() {
   const params = useParams();
@@ -146,13 +147,9 @@ export default function ProjectDetails() {
             <FileText className="w-4 h-4" />
             Document Type View
           </Tabs.Trigger>
-          <Tabs.Trigger value="tracking" className="px-6 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-colors flex items-center gap-2 whitespace-nowrap">
-            <FolderKanban className="w-4 h-4" />
-            Subcontractor View
-          </Tabs.Trigger>
           <Tabs.Trigger value="subcontractors" className="px-6 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-colors flex items-center gap-2 whitespace-nowrap">
             <HardHat className="w-4 h-4" />
-            Subcontractors Directory
+            Subcontractor View
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -160,12 +157,11 @@ export default function ProjectDetails() {
           <DocumentTypeView project={project} documents={allDocs || []} isLoading={docsLoading} projectId={projectId} />
         </Tabs.Content>
 
-        <Tabs.Content value="tracking" className="focus:outline-none">
-          <DocumentTrackingBoard project={project} documents={allDocs || []} isLoading={docsLoading} />
-        </Tabs.Content>
-
         <Tabs.Content value="subcontractors" className="focus:outline-none">
-          <SubcontractorList project={project} />
+          <DocumentTrackingBoard project={project} documents={allDocs || []} isLoading={docsLoading} />
+          <div className="mt-8">
+            <SubcontractorList project={project} />
+          </div>
         </Tabs.Content>
       </Tabs.Root>
     </AppLayout>
@@ -314,6 +310,42 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
 }
 
 function DocTypeDetailRow({ doc, isLocked, deleteMutation, queryClient, projectId, toast }: { doc: DocumentSlotWithSubcontractor, isLocked: boolean, deleteMutation: ReturnType<typeof useDeleteDocumentSlot>, queryClient: ReturnType<typeof useQueryClient>, projectId: number, toast: ReturnType<typeof useToast>["toast"] }) {
+  const { uploadFile, isUploading } = useFileUpload();
+  const updateMutation = useUpdateDocumentSlot();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { objectPath, fileName } = await uploadFile(file, doc.id);
+      updateMutation.mutate({
+        documentSlotId: doc.id,
+        data: { status: 'uploaded', filePath: objectPath, fileName }
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+          toast({ title: "File uploaded successfully" });
+        }
+      });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    }
+  };
+
+  const handleApprove = () => {
+    updateMutation.mutate({
+      documentSlotId: doc.id,
+      data: { status: 'approved' }
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+        toast({ title: "Document approved" });
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-colors gap-3">
       <div className="flex items-center gap-3">
@@ -321,12 +353,38 @@ function DocTypeDetailRow({ doc, isLocked, deleteMutation, queryClient, projectI
         <div>
           <p className="font-semibold text-foreground text-sm">{doc.vendorName || `Sub #${doc.subcontractorId}`}</p>
           <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>
+          {doc.fileName && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">{doc.fileName}</p>}
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {doc.fileName && (
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.fileName}</span>
+        {doc.status === 'not_submitted' && !isLocked && (
+          <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg text-sm font-medium transition-colors">
+            <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+            {isUploading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <UploadCloud className="w-4 h-4" />}
+            {isUploading ? "Uploading..." : "Upload"}
+          </label>
         )}
+
+        {doc.status !== 'not_submitted' && doc.filePath && (
+          <a
+            href={`/api/storage${doc.filePath}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg text-sm font-medium transition-colors"
+          >
+            <Download className="w-4 h-4" /> View
+          </a>
+        )}
+
+        {doc.status === 'uploaded' && !isLocked && (
+          <button
+            onClick={handleApprove}
+            disabled={updateMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            <CheckCircle className="w-4 h-4" /> Approve
+          </button>
+        )}
+
         {!isLocked && doc.status !== 'approved' && (
           <button
             onClick={(e) => {

@@ -247,6 +247,11 @@ router.delete("/projects/:projectId", async (req, res): Promise<void> => {
     return;
   }
 
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
+    return;
+  }
+
   const [project] = await db
     .delete(projectsTable)
     .where(and(eq(projectsTable.id, params.data.projectId), eq(projectsTable.userId, req.user.id)))
