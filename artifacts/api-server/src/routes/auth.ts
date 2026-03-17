@@ -115,7 +115,17 @@ router.post("/auth/signup", async (req: Request, res: Response) => {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const [user] = await db.insert(usersTable).values({ firstName, lastName, email, passwordHash }).returning();
+  let user: typeof usersTable.$inferSelect;
+  try {
+    [user] = await db.insert(usersTable).values({ firstName, lastName, email, passwordHash }).returning();
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code === "23505") {
+      res.status(409).json({ error: "An account with this email already exists." });
+      return;
+    }
+    throw err;
+  }
 
   const sessionData: SessionData = {
     user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },

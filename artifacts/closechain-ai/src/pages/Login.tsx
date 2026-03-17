@@ -87,9 +87,9 @@ export default function Login() {
       }
     } catch (err) {
       const msg = (err as Error).message || "Something went wrong.";
-      if (msg.toLowerCase().includes("email")) {
+      if (mode === "signup" && msg.toLowerCase().includes("email")) {
         setErrors({ email: msg });
-      } else if (msg.toLowerCase().includes("password")) {
+      } else if (mode === "signup" && msg.toLowerCase().includes("password")) {
         setErrors({ password: msg });
       } else {
         setErrors({ form: msg });
