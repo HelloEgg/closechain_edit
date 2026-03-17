@@ -19,11 +19,8 @@ export const usersTable = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  passwordHash: text("password_hash"),
   role: varchar("role"),
   emailVerified: boolean("email_verified").notNull().default(false),
-  verificationToken: text("verification_token"),
-  verificationTokenExpiry: timestamp("verification_token_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
