@@ -31,7 +31,7 @@ export interface StatusBadgeProps
 const statusLabels: Record<string, string> = {
   not_submitted: "Not Submitted",
   uploaded: "Pending Review",
-  approved: "Approved",
+  approved: "Published",
   active: "Active",
   archived: "Archived",
 };

@@ -141,7 +141,7 @@ function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Pr
             
             {project.endDate && (
               <span className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md inline-block mb-4">
-                End: {project.endDate}
+                {project.endDate}
               </span>
             )}
             
