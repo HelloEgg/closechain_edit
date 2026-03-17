@@ -1,5 +1,7 @@
 import * as oidc from "openid-client";
 import { Router, type IRouter, type Request, type Response } from "express";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
 import {
   GetCurrentAuthUserResponse,
   ExchangeMobileAuthorizationCodeBody,
@@ -7,17 +9,31 @@ import {
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   clearSession,
   getOidcConfig,
   getSessionId,
   createSession,
   deleteSession,
+  getSession,
   SESSION_COOKIE,
   SESSION_TTL,
   ISSUER_URL,
   type SessionData,
 } from "../lib/auth";
+
+const SignupBody = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+const LoginBody = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
@@ -81,6 +97,62 @@ async function upsertUser(claims: Record<string, unknown>) {
     .returning();
   return user;
 }
+
+router.post("/auth/signup", async (req: Request, res: Response) => {
+  const parsed = SignupBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input. Password must be at least 8 characters." });
+    return;
+  }
+
+  const { firstName, lastName, email, password } = parsed.data;
+
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+  if (existing) {
+    res.status(409).json({ error: "An account with this email already exists." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const [user] = await db.insert(usersTable).values({ firstName, lastName, email, passwordHash }).returning();
+
+  const sessionData: SessionData = {
+    user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },
+  };
+  const sid = await createSession(sessionData);
+  res.cookie(SESSION_COOKIE, sid, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: SESSION_TTL });
+  res.status(201).json({ user: sessionData.user });
+});
+
+router.post("/auth/login", async (req: Request, res: Response) => {
+  const parsed = LoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input." });
+    return;
+  }
+
+  const { email, password } = parsed.data;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (!user || !user.passwordHash) {
+    res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  const sessionData: SessionData = {
+    user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },
+  };
+  const sid = await createSession(sessionData);
+  res.cookie(SESSION_COOKIE, sid, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: SESSION_TTL });
+  res.json({ user: sessionData.user });
+});
 
 router.get("/auth/user", (req: Request, res: Response) => {
   res.json(
@@ -188,18 +260,26 @@ router.get("/callback", async (req: Request, res: Response) => {
 });
 
 router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
   const origin = getOrigin(req);
-
   const sid = getSessionId(req);
+
+  const session = sid ? await getSession(sid) : null;
   await clearSession(res, sid);
 
-  const endSessionUrl = oidc.buildEndSessionUrl(config, {
-    client_id: process.env.REPL_ID!,
-    post_logout_redirect_uri: origin,
-  });
+  if (session?.access_token) {
+    try {
+      const config = await getOidcConfig();
+      const endSessionUrl = oidc.buildEndSessionUrl(config, {
+        client_id: process.env.REPL_ID!,
+        post_logout_redirect_uri: origin,
+      });
+      res.redirect(endSessionUrl.href);
+      return;
+    } catch {
+    }
+  }
 
-  res.redirect(endSessionUrl.href);
+  res.redirect(origin);
 });
 
 router.post(
