@@ -13,7 +13,7 @@ Closechain AI is a web application for General Contractors in interior construct
 - **API framework**: Express 5
 - **Frontend**: React + Vite + Tailwind CSS + Radix UI
 - **Database**: PostgreSQL + Drizzle ORM
-- **Auth**: Supabase Auth (email/password with email verification; JWT Bearer tokens)
+- **Auth**: Replit Auth (OpenID Connect with PKCE)
 - **File Storage**: Replit Object Storage (GCS presigned URL flow)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
@@ -43,7 +43,7 @@ artifacts-monorepo/
 
 ## Database Schema
 
-- **users** — Supabase Auth user profiles synced on each authenticated request (id, email, firstName, lastName, profileImageUrl, role, emailVerified)
+- **users** — Replit Auth user profiles (id, email, firstName, lastName, profileImageUrl)
 - **projects** — GC projects with name, jobNumber, clientName, description, address, endDate, status (active/approved), clientPortalToken
 - **subcontractors** — Linked to projects with vendorName, vendorCode, csiCode
 - **document_slots** — Linked to subcontractors with documentType, parentDocumentType (nullable), packageSection, status (not_submitted/uploaded/approved), filePath, fileName

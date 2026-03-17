@@ -1,5 +1,3 @@
-import { getAccessToken } from "./token-provider";
-
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
@@ -285,9 +283,7 @@ export async function customFetch<T = unknown>(
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
   }
 
-  const token = getAccessToken();
-  const authHeader: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
-  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, authHeader, headersInit);
+  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
 
   if (
     typeof init.body === "string" &&

@@ -19,9 +19,6 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
-  emailVerified: boolean;
-  /** @nullable */
-  role: string | null;
 }
 
 export interface AuthUserEnvelope {
