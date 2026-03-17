@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import logoFull from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_00_AM_1773689296535.png";
 
+interface FieldErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  form?: string;
+}
+
 export default function Login() {
   const { signInWithEmail, signUpWithEmail, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -15,7 +24,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -30,7 +39,7 @@ export default function Login() {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
-    setError("");
+    setErrors({});
     setShowPassword(false);
   };
 
@@ -39,25 +48,36 @@ export default function Login() {
     setMode(next);
   };
 
+  const validate = (): FieldErrors => {
+    const e: FieldErrors = {};
+    if (mode === "signup") {
+      if (!firstName.trim()) e.firstName = "First name is required.";
+      if (!lastName.trim()) e.lastName = "Last name is required.";
+    }
+    if (!email.trim()) {
+      e.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      e.email = "Enter a valid email address.";
+    }
+    if (!password) {
+      e.password = "Password is required.";
+    } else if (mode === "signup" && password.length < 8) {
+      e.password = "Password must be at least 8 characters.";
+    }
+    if (mode === "signup" && password && confirmPassword !== password) {
+      e.confirmPassword = "Passwords do not match.";
+    }
+    return e;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-
-    if (mode === "signup") {
-      if (!firstName.trim() || !lastName.trim()) {
-        setError("Please enter your first and last name.");
-        return;
-      }
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters.");
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError("Passwords do not match.");
-        return;
-      }
+    const fieldErrors = validate();
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      return;
     }
-
+    setErrors({});
     setSubmitting(true);
     try {
       if (mode === "signup") {
@@ -66,11 +86,25 @@ export default function Login() {
         await signInWithEmail(email.trim(), password);
       }
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message || "Something went wrong.";
+      if (msg.toLowerCase().includes("email")) {
+        setErrors({ email: msg });
+      } else if (msg.toLowerCase().includes("password")) {
+        setErrors({ password: msg });
+      } else {
+        setErrors({ form: msg });
+      }
     } finally {
       setSubmitting(false);
     }
   };
+
+  const inputClass = (field: keyof FieldErrors) =>
+    `w-full px-3 py-2.5 rounded-lg border text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-colors ${
+      errors[field]
+        ? "border-destructive focus:ring-destructive/50 focus:border-destructive"
+        : "border-border focus:ring-primary/50 focus:border-primary"
+    }`;
 
   return (
     <div className="min-h-screen w-full flex bg-background relative overflow-hidden">
@@ -98,30 +132,32 @@ export default function Login() {
               : "Get started managing your construction closeout packages."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
             {mode === "signup" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">First name</label>
                   <input
                     type="text"
-                    required
+                    autoComplete="given-name"
                     value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
+                    onChange={e => { setFirstName(e.target.value); setErrors(prev => ({ ...prev, firstName: undefined })); }}
                     placeholder="Jane"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                    className={inputClass("firstName")}
                   />
+                  {errors.firstName && <p className="mt-1 text-xs text-destructive">{errors.firstName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Last name</label>
                   <input
                     type="text"
-                    required
+                    autoComplete="family-name"
                     value={lastName}
-                    onChange={e => setLastName(e.target.value)}
+                    onChange={e => { setLastName(e.target.value); setErrors(prev => ({ ...prev, lastName: undefined })); }}
                     placeholder="Smith"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                    className={inputClass("lastName")}
                   />
+                  {errors.lastName && <p className="mt-1 text-xs text-destructive">{errors.lastName}</p>}
                 </div>
               </div>
             )}
@@ -130,13 +166,13 @@ export default function Login() {
               <label className="block text-sm font-medium text-foreground mb-1">Email address</label>
               <input
                 type="email"
-                required
                 autoComplete="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: undefined })); }}
                 placeholder="you@company.com"
-                className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                className={inputClass("email")}
               />
+              {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div>
@@ -144,12 +180,11 @@ export default function Login() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  required
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: undefined })); }}
                   placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
-                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                  className={`${inputClass("password")} pr-10`}
                 />
                 <button
                   type="button"
@@ -160,6 +195,7 @@ export default function Login() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
             </div>
 
             {mode === "signup" && (
@@ -167,18 +203,18 @@ export default function Login() {
                 <label className="block text-sm font-medium text-foreground mb-1">Confirm password</label>
                 <input
                   type={showPassword ? "text" : "password"}
-                  required
                   autoComplete="new-password"
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
+                  onChange={e => { setConfirmPassword(e.target.value); setErrors(prev => ({ ...prev, confirmPassword: undefined })); }}
                   placeholder="Repeat your password"
-                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                  className={inputClass("confirmPassword")}
                 />
+                {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword}</p>}
               </div>
             )}
 
-            {error && (
-              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
+            {errors.form && (
+              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{errors.form}</p>
             )}
 
             <button
