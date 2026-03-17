@@ -1,6 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentAuthUser, getGetCurrentAuthUserQueryKey } from "@workspace/api-client-react";
 
+export class VerificationRequired extends Error {
+  email: string;
+  constructor(email: string) {
+    super("Please verify your email address.");
+    this.email = email;
+  }
+}
+
 export function useAuth() {
   const queryClient = useQueryClient();
 
@@ -28,6 +36,9 @@ export function useAuth() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
+      if (res.status === 403 && body.needsVerification) {
+        throw new VerificationRequired(body.email ?? email);
+      }
       throw new Error(body.error || "Sign in failed.");
     }
     await queryClient.invalidateQueries({ queryKey: getGetCurrentAuthUserQueryKey() });
@@ -38,18 +49,29 @@ export function useAuth() {
     lastName: string,
     email: string,
     password: string,
-  ): Promise<void> => {
+    role?: string,
+  ): Promise<{ needsVerification: true; email: string }> => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     const res = await fetch(`${base}/api/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, email, password }),
+      body: JSON.stringify({ firstName, lastName, email, password, role }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || "Sign up failed.");
     }
-    await queryClient.invalidateQueries({ queryKey: getGetCurrentAuthUserQueryKey() });
+    const body = await res.json();
+    return { needsVerification: true, email: body.email ?? email };
+  };
+
+  const resendVerification = async (email: string): Promise<void> => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    await fetch(`${base}/api/auth/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
   };
 
   return {
@@ -60,5 +82,6 @@ export function useAuth() {
     logout,
     signInWithEmail,
     signUpWithEmail,
+    resendVerification,
   };
 }

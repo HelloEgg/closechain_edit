@@ -848,7 +848,7 @@ components:
         - status
     AuthUser:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl]
+      required: [id, email, firstName, lastName, profileImageUrl, emailVerified, role]
       properties:
         id:
           type: string
@@ -860,6 +860,10 @@ components:
         lastName:
           type: [string, 'null']
         profileImageUrl:
+          type: [string, 'null']
+        emailVerified:
+          type: boolean
+        role:
           type: [string, 'null']
     AuthUserEnvelope:
       type: object
