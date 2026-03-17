@@ -205,14 +205,30 @@ export default function Login() {
                 )}
               </div>
 
-              <h2 className="text-3xl font-display font-bold tracking-tight text-foreground">
-                {mode === "signin" ? "Sign in" : "Create account"}
-              </h2>
-              <p className="mt-1.5 text-sm text-muted-foreground mb-6">
-                {mode === "signin"
-                  ? "Welcome back. Enter your credentials to continue."
-                  : "Set up your Closechain AI account."}
-              </p>
+              <div className="flex rounded-xl border border-border bg-muted/40 p-1 mb-6">
+                <button
+                  type="button"
+                  onClick={() => switchMode("signin")}
+                  className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+                    mode === "signin"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("signup")}
+                  className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+                    mode === "signup"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Create account
+                </button>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {mode === "signup" && (
@@ -267,12 +283,6 @@ export default function Login() {
                 </button>
               </form>
 
-              <div className="mt-5 text-center text-sm text-muted-foreground">
-                {mode === "signin"
-                  ? <>Don't have an account? <button onClick={() => switchMode("signup")} className="text-primary font-semibold hover:underline">Create one</button></>
-                  : <>Already have an account? <button onClick={() => switchMode("signin")} className="text-primary font-semibold hover:underline">Sign in</button></>
-                }
-              </div>
             </>
           )}
 
