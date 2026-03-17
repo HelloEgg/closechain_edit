@@ -123,33 +123,34 @@ function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Pr
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {projects.map((project) => (
         <Link key={project.id} href={`/projects/${project.id}`}>
-          <div className="group bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col h-full cursor-pointer relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-              <button
-                onClick={(e) => handleDelete(e, project.id, project.name)}
-                disabled={deleteMutation.isPending}
-                title="Delete project"
-                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <ArrowRight className="text-primary w-5 h-5" />
-            </div>
-            
+          <div className="group bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col h-full cursor-pointer">
             <div className="flex justify-between items-start mb-4">
               <StatusBadge status={project.status} />
-              <span className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md">
-                {format(new Date(project.createdAt), 'MMM d, yyyy')}
-              </span>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleDelete(e, project.id, project.name)}
+                  disabled={deleteMutation.isPending}
+                  title="Delete project"
+                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <ArrowRight className="text-primary w-5 h-5" />
+              </div>
             </div>
+            
+            {project.endDate && (
+              <span className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md inline-block mb-4">
+                End: {project.endDate}
+              </span>
+            )}
             
             <h3 className="text-xl font-display font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
               {project.name}
             </h3>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mb-1">
-              {project.jobNumber && <p className="text-xs text-muted-foreground">Job: {project.jobNumber}</p>}
-              {project.endDate && <p className="text-xs text-muted-foreground">End: {project.endDate}</p>}
-            </div>
+            {project.jobNumber && (
+              <p className="text-xs text-muted-foreground mb-1">Job: {project.jobNumber}</p>
+            )}
             <p className="text-sm text-muted-foreground mb-6 line-clamp-1">{project.clientName}</p>
             
             <div className="mt-auto pt-6 border-t border-border/50">

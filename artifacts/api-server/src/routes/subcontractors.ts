@@ -159,10 +159,6 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
 
   const division = await getCsiDivision(parsed.data.csiCode);
   if (!division) {
@@ -234,10 +230,6 @@ router.post("/projects/:projectId/subcontractors/import", async (req, res): Prom
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
 
   const invalidCodes: string[] = [];
   for (const subData of parsed.data.subcontractors) {
@@ -291,10 +283,6 @@ router.delete("/projects/:projectId/subcontractors/:subcontractorId", async (req
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
 
   const [sub] = await db
     .delete(subcontractorsTable)

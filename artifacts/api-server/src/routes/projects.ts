@@ -221,10 +221,7 @@ router.patch("/projects/:projectId", async (req, res): Promise<void> => {
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
+
 
   const parsed = UpdateProjectBody.safeParse(req.body);
   if (!parsed.success) {
@@ -259,10 +256,7 @@ router.delete("/projects/:projectId", async (req, res): Promise<void> => {
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
+
 
   const [project] = await db
     .delete(projectsTable)
@@ -310,6 +304,40 @@ router.post("/projects/:projectId/approve", async (req, res): Promise<void> => {
   res.json({
     clientPortalToken: project.clientPortalToken,
     clientPortalUrl: `/client-portal/${project.clientPortalToken}`,
+  });
+});
+
+router.post("/projects/:projectId/retrieve", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const params = ApproveProjectParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, params.data.projectId), eq(projectsTable.userId, req.user.id)));
+
+  if (!existing) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const [project] = await db
+    .update(projectsTable)
+    .set({ status: "active", clientPortalToken: null })
+    .where(eq(projectsTable.id, params.data.projectId))
+    .returning();
+
+  res.json({
+    status: project.status,
+    message: "Project retrieved. Client portal has been unpublished.",
   });
 });
 
