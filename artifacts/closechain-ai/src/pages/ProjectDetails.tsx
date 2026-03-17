@@ -24,11 +24,11 @@ export default function ProjectDetails() {
   const deleteMutation = useDeleteProject();
 
   const handleApprove = () => {
-    if (confirm("Are you sure you want to approve this closeout package? This will lock it and generate a client portal link.")) {
+    if (confirm("Create client portal? This will generate a link to share with your team.")) {
       approveMutation.mutate({ projectId }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-          toast({ title: "Project Approved!", description: "Client portal link generated.", variant: "default" });
+          toast({ title: "Client portal created!", description: "Portal link has been generated.", variant: "default" });
         }
       });
     }
@@ -115,7 +115,7 @@ export default function ProjectDetails() {
                   className="w-full sm:w-auto ml-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  Approve Package
+                  Create Client Portal
                 </button>
               ) : project.clientPortalToken && (
                 <a 
