@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, CheckCircle, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download } from "lucide-react";
+import { Building2, Globe, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download, CheckCircle2 } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -24,11 +24,11 @@ export default function ProjectDetails() {
   const deleteMutation = useDeleteProject();
 
   const handleApprove = () => {
-    if (confirm("Are you sure you want to approve this closeout package? This will lock it and generate a client portal link.")) {
+    if (confirm("Are you sure you want to create the client portal? This will lock the project and generate a shareable client portal link.")) {
       approveMutation.mutate({ projectId }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-          toast({ title: "Project Approved!", description: "Client portal link generated.", variant: "default" });
+          toast({ title: "Client Portal Created!", description: "Your client portal link is ready to share.", variant: "default" });
         }
       });
     }
@@ -114,8 +114,8 @@ export default function ProjectDetails() {
                   disabled={approveMutation.isPending}
                   className="w-full sm:w-auto ml-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <CheckCircle className="w-5 h-5" />
-                  Approve Package
+                  <Globe className="w-5 h-5" />
+                  Create Client Portal
                 </button>
               ) : project.clientPortalToken && (
                 <a 
@@ -123,7 +123,7 @@ export default function ProjectDetails() {
                   target="_blank"
                   className="w-full sm:w-auto ml-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
                 >
-                  Client Portal
+                  View Client Portal
                   <ExternalLink className="w-5 h-5" />
                 </a>
               )}
@@ -373,7 +373,7 @@ function DocTypeDetailRow({ doc, isLocked, deleteMutation, queryClient, projectI
             disabled={updateMutation.isPending}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
-            <CheckCircle className="w-4 h-4" /> Approve
+            <CheckCircle2 className="w-4 h-4" /> Approve
           </button>
         )}
 

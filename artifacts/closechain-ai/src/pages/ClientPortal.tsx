@@ -26,7 +26,7 @@ export default function ClientPortal() {
             <FileText className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Package Not Found</h2>
-          <p className="text-muted-foreground">This link is invalid or the closeout package has not been approved yet.</p>
+          <p className="text-muted-foreground">This link is invalid or the client portal has not been created yet.</p>
         </div>
       </div>
     );
