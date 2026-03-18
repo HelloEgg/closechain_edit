@@ -14,8 +14,8 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   const totalProjects = projects?.length || 0;
-  const activeProjects = projects?.filter(p => p.status === 'active').length || 0;
-  const approvedProjects = projects?.filter(p => p.status === 'approved').length || 0;
+  const notPublishedProjects = projects?.filter(p => !p.clientPortalToken).length || 0;
+  const publishedProjects = projects?.filter(p => !!p.clientPortalToken).length || 0;
 
   return (
     <AppLayout>
@@ -37,8 +37,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
         {[
           { label: "Total Projects", value: totalProjects, color: "bg-blue-50 text-blue-700", icon: FolderKanban },
-          { label: "Active Closeouts", value: activeProjects, color: "bg-amber-50 text-amber-700", icon: FolderKanban },
-          { label: "Approved Packages", value: approvedProjects, color: "bg-emerald-50 text-emerald-700", icon: FolderKanban },
+          { label: "Not Published", value: notPublishedProjects, color: "bg-amber-50 text-amber-700", icon: FolderKanban },
+          { label: "Published", value: publishedProjects, color: "bg-emerald-50 text-emerald-700", icon: FolderKanban },
         ].map((metric, i) => (
           <div key={i} className="bg-card rounded-2xl p-6 border border-border shadow-sm">
             <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
