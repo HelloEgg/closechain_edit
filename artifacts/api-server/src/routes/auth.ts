@@ -106,6 +106,7 @@ router.get("/login", async (req: Request, res: Response) => {
     scope: "openid email profile offline_access",
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
+    prompt: "login consent",
     state,
     nonce,
   });
@@ -145,8 +146,7 @@ router.get("/callback", async (req: Request, res: Response) => {
       expectedState,
       idTokenExpected: true,
     });
-  } catch (err) {
-    console.error("OIDC token exchange error:", err);
+  } catch {
     res.redirect("/api/login");
     return;
   }
@@ -160,37 +160,31 @@ router.get("/callback", async (req: Request, res: Response) => {
 
   const claims = tokens.claims();
   if (!claims) {
-    console.error("OIDC callback: no claims in ID token");
     res.redirect("/api/login");
     return;
   }
 
-  try {
-    const dbUser = await upsertUser(
-      claims as unknown as Record<string, unknown>,
-    );
+  const dbUser = await upsertUser(
+    claims as unknown as Record<string, unknown>,
+  );
 
-    const now = Math.floor(Date.now() / 1000);
-    const sessionData: SessionData = {
-      user: {
-        id: dbUser.id,
-        email: dbUser.email,
-        firstName: dbUser.firstName,
-        lastName: dbUser.lastName,
-        profileImageUrl: dbUser.profileImageUrl,
-      },
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: tokens.expiresIn() ? now + tokens.expiresIn()! : claims.exp,
-    };
+  const now = Math.floor(Date.now() / 1000);
+  const sessionData: SessionData = {
+    user: {
+      id: dbUser.id,
+      email: dbUser.email,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      profileImageUrl: dbUser.profileImageUrl,
+    },
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: tokens.expiresIn() ? now + tokens.expiresIn()! : claims.exp,
+  };
 
-    const sid = await createSession(sessionData);
-    setSessionCookie(res, sid);
-    res.redirect(returnTo);
-  } catch (err) {
-    console.error("OIDC callback: session creation error:", err);
-    res.redirect("/api/login");
-  }
+  const sid = await createSession(sessionData);
+  setSessionCookie(res, sid);
+  res.redirect(returnTo);
 });
 
 router.get("/logout", async (req: Request, res: Response) => {

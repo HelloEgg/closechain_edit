@@ -13,7 +13,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoFull from "@assets/ChatGPT Image Mar 17, 2026, 04_47_49 PM.png";
+import logoFull from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_00_AM_1773689296535.png";
 import logoIcon from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_01_AM_1773689296536.png";
 
 function ManagerAIPanel() {

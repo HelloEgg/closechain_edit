@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, CheckCircle, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download, RotateCcw } from "lucide-react";
+import { Building2, CheckCircle, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -22,40 +22,21 @@ export default function ProjectDetails() {
   const { data: allDocs, isLoading: docsLoading } = useListAllProjectDocuments(projectId);
   const approveMutation = useApproveProject();
   const deleteMutation = useDeleteProject();
-  const [isRetrieving, setIsRetrieving] = useState(false);
 
   const handleApprove = () => {
-    if (confirm("Create client portal? This will generate a link to share with your team.")) {
+    if (confirm("Are you sure you want to approve this closeout package? This will lock it and generate a client portal link.")) {
       approveMutation.mutate({ projectId }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-          toast({ title: "Client portal created!", description: "Portal link has been generated.", variant: "default" });
+          toast({ title: "Project Approved!", description: "Client portal link generated.", variant: "default" });
         }
       });
     }
   };
 
-  const handleRetrieve = async () => {
-    if (!confirm("Unpublish client portal? The portal link will be removed but the project will remain editable in your system.")) return;
-    setIsRetrieving(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/retrieve`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to retrieve project");
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
-      toast({ title: "Client portal unpublished", description: "Portal link has been removed.", variant: "default" });
-    } catch (err) {
-      toast({ title: "Failed to unpublish", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setIsRetrieving(false);
-    }
-  };
-
   const handleDelete = () => {
     if (!project) return;
-    const msg = project.status === 'approved' 
-      ? `Delete "${project.name}" (and client portal)? This will permanently remove the project from both your system and the client portal.`
-      : `Delete "${project.name}"? This will permanently remove the project, all subcontractors, and all documents.`;
-    if (!confirm(msg)) return;
+    if (!confirm(`Delete "${project.name}"? This will permanently remove the project, all subcontractors, and all documents. This cannot be undone.`)) return;
     deleteMutation.mutate({ projectId }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -134,27 +115,17 @@ export default function ProjectDetails() {
                   className="w-full sm:w-auto ml-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  Create Client Portal
+                  Approve Package
                 </button>
               ) : project.clientPortalToken && (
-                <>
-                  <a 
-                    href={`/client-portal/${project.clientPortalToken}`}
-                    target="_blank"
-                    className="w-full sm:w-auto ml-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    Client Portal
-                    <ExternalLink className="w-5 h-5" />
-                  </a>
-                  <button 
-                    onClick={handleRetrieve}
-                    disabled={isRetrieving}
-                    className="w-full sm:w-auto ml-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                    Unpublish Portal
-                  </button>
-                </>
+                <a 
+                  href={`/client-portal/${project.clientPortalToken}`}
+                  target="_blank"
+                  className="w-full sm:w-auto ml-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  Client Portal
+                  <ExternalLink className="w-5 h-5" />
+                </a>
               )}
 
               <button

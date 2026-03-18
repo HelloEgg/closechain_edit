@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSetupProject, useListCsiDivisions, type CsiDivision } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useLocation } from "wouter";
@@ -32,7 +32,6 @@ interface StepSelectSubsProps {
   setCustomSubForm: (v: { vendorName: string; vendorCode: string; csiCode: string }) => void;
   onAddCustom: () => void;
   onRemoveCustom: (idx: number) => void;
-  csiDivisions: CsiDivision[];
 }
 
 interface StepCustomizeDocsProps {
@@ -65,19 +64,18 @@ export default function ProjectWizard() {
   const [customSubForm, setCustomSubForm] = useState({ vendorName: "", vendorCode: "", csiCode: "" });
   const [showCustomForm, setShowCustomForm] = useState(false);
 
-  useEffect(() => {
-    if (csiDivisions && subs.length === 0) {
-      const defaultSubs = csiDivisions.map((div) => ({
-        vendorName: "",
-        vendorCode: "",
-        csiCode: div.code,
-        csiDivision: div.name,
-        documentTypes: div.requiredDocuments.map((r) => r.documentType),
-        selected: false,
-      }));
-      setSubs(defaultSubs);
-    }
-  }, [csiDivisions]);
+  const initSubsFromCSI = () => {
+    if (!csiDivisions) return;
+    const defaultSubs = csiDivisions.map((div) => ({
+      vendorName: "",
+      vendorCode: "",
+      csiCode: div.code,
+      csiDivision: div.name,
+      documentTypes: div.requiredDocuments.map((r) => r.documentType),
+      selected: false,
+    }));
+    setSubs(defaultSubs);
+  };
 
   const handleNext = () => {
     if (step === 0) {
@@ -85,6 +83,7 @@ export default function ProjectWizard() {
         toast({ title: "Please enter a project name", variant: "destructive" });
         return;
       }
+      if (subs.length === 0) initSubsFromCSI();
     }
     setStep(step + 1);
   };
@@ -116,11 +115,10 @@ export default function ProjectWizard() {
 
   const addCustomSub = () => {
     if (!customSubForm.vendorName || !customSubForm.csiCode) return;
-    const trimmedCode = customSubForm.csiCode.trim();
-    const division = csiDivisions?.find(d => d.code.trim() === trimmedCode);
+    const division = csiDivisions?.find(d => d.code === customSubForm.csiCode);
     setSubs(prev => [...prev, {
       ...customSubForm,
-      csiCode: trimmedCode,
+      csiCode: customSubForm.csiCode,
       csiDivision: division?.name || "Custom",
       documentTypes: division?.requiredDocuments ? division.requiredDocuments.map((r) => r.documentType) : [],
       selected: true,
@@ -195,7 +193,7 @@ export default function ProjectWizard() {
 
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8">
           {step === 0 && <StepProjectInfo info={projectInfo} onChange={setProjectInfo} />}
-          {step === 1 && <StepSelectSubs subs={subs} onToggle={toggleSub} onUpdateVendor={updateSubVendor} showCustomForm={showCustomForm} setShowCustomForm={setShowCustomForm} customSubForm={customSubForm} setCustomSubForm={setCustomSubForm} onAddCustom={addCustomSub} onRemoveCustom={removeCustomSub} csiDivisions={csiDivisions || []} />}
+          {step === 1 && <StepSelectSubs subs={subs} onToggle={toggleSub} onUpdateVendor={updateSubVendor} showCustomForm={showCustomForm} setShowCustomForm={setShowCustomForm} customSubForm={customSubForm} setCustomSubForm={setCustomSubForm} onAddCustom={addCustomSub} onRemoveCustom={removeCustomSub} />}
           {step === 2 && <StepCustomizeDocs subs={selectedSubs} allSubs={subs} setSubs={setSubs} csiDivisions={csiDivisions || []} onToggleDoc={toggleDoc} onAddCustomDoc={addCustomDoc} />}
           {step === 3 && <StepReview projectInfo={projectInfo} subs={selectedSubs} />}
         </div>
@@ -259,26 +257,7 @@ function StepProjectInfo({ info, onChange }: { info: ProjectInfoData, onChange: 
   );
 }
 
-function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setShowCustomForm, customSubForm, setCustomSubForm, onAddCustom, onRemoveCustom, csiDivisions }: StepSelectSubsProps) {
-  const matchedDivision = useMemo(() => {
-    if (!customSubForm.csiCode.trim()) return null;
-    return csiDivisions.find(d => d.code.trim() === customSubForm.csiCode.trim()) || null;
-  }, [customSubForm.csiCode, csiDivisions]);
-
-  if (subs.length === 0) {
-    return (
-      <div className="space-y-5">
-        <h2 className="text-xl font-display font-bold">Select Subcontractors</h2>
-        <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-          <div className="text-center">
-            <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            Loading trade list...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setShowCustomForm, customSubForm, setCustomSubForm, onAddCustom, onRemoveCustom }: StepSelectSubsProps) {
   return (
     <div className="space-y-5">
       <div className="flex justify-between items-start">
@@ -323,16 +302,7 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
             <div className="grid grid-cols-3 gap-3">
               <input value={customSubForm.vendorName} onChange={e => setCustomSubForm({ ...customSubForm, vendorName: e.target.value })} placeholder="Vendor Name" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
               <input value={customSubForm.vendorCode} onChange={e => setCustomSubForm({ ...customSubForm, vendorCode: e.target.value })} placeholder="Vendor Code" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
-              <div className="space-y-1">
-                <input value={customSubForm.csiCode} onChange={e => setCustomSubForm({ ...customSubForm, csiCode: e.target.value })} placeholder="CSI Code (e.g. 260000)" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
-                {customSubForm.csiCode.trim() && (
-                  matchedDivision ? (
-                    <p className="text-xs text-emerald-600 font-medium px-1">✓ {matchedDivision.name} — {matchedDivision.requiredDocuments.length} docs pre-selected</p>
-                  ) : (
-                    <p className="text-xs text-amber-600 px-1">No match — no documents will be pre-selected</p>
-                  )
-                )}
-              </div>
+              <input value={customSubForm.csiCode} onChange={e => setCustomSubForm({ ...customSubForm, csiCode: e.target.value })} placeholder="CSI Code (e.g. 260000)" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
             </div>
             <div className="flex gap-2">
               <button onClick={onAddCustom} className="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-medium">Add</button>

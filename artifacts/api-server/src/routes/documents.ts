@@ -86,6 +86,10 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
     return;
   }
 
+  if (await isProjectLocked(params.data.projectId)) {
+    res.status(403).json({ error: "Project is approved and locked" });
+    return;
+  }
 
   const parsed = AddDocumentSlotBody.safeParse(req.body);
   if (!parsed.success) {
