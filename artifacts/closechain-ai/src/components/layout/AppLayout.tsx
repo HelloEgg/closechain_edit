@@ -170,7 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="px-3 py-4 hidden md:flex items-center">
-          <img src={logoFull} alt="Closechain AI" className="h-56 w-auto -ml-4" />
+          <img src={logoFull} alt="Closechain AI" className="h-28 w-auto -ml-4" />
         </div>
 
         <nav className="px-4 py-4 space-y-1">
