@@ -138,17 +138,14 @@ function ProjectsGridView({ projects, isLoading, onCreateClick }: { projects: Pr
             
             <div className="flex justify-between items-start mb-4">
               <StatusBadge status={project.status} />
-              <span className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-md">
-                {format(new Date(project.createdAt), 'MMM d, yyyy')}
-              </span>
             </div>
             
             <h3 className="text-xl font-display font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
               {project.name}
             </h3>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mb-1">
-              {project.jobNumber && <p className="text-xs text-muted-foreground">Job: {project.jobNumber}</p>}
-              {project.endDate && <p className="text-xs text-muted-foreground">End: {project.endDate}</p>}
+              {project.jobNumber && <p className="text-xs text-muted-foreground">Job Number: {project.jobNumber}</p>}
+              {project.endDate && <p className="text-xs text-muted-foreground">End Date: {format(new Date(project.endDate), 'yyyy-MM-dd')}</p>}
             </div>
             <p className="text-sm text-muted-foreground mb-6 line-clamp-1">{project.clientName}</p>
             
