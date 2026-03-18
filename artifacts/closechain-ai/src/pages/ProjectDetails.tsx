@@ -1,4 +1,4 @@
-import { useGetProject, useListAllProjectDocuments, useApproveProject, useDeleteProject, useDeleteDocumentSlot, useUpdateDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
+import { useGetProject, useListAllProjectDocuments, useApproveProject, useUnpublishProject, useDeleteProject, useDeleteDocumentSlot, useUpdateDocumentSlot, type ProjectDetail, type DocumentSlotWithSubcontractor } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, useLocation } from "wouter";
@@ -21,14 +21,27 @@ export default function ProjectDetails() {
   const { data: project, isLoading: projectLoading } = useGetProject(projectId);
   const { data: allDocs, isLoading: docsLoading } = useListAllProjectDocuments(projectId);
   const approveMutation = useApproveProject();
+  const unpublishMutation = useUnpublishProject();
   const deleteMutation = useDeleteProject();
 
   const handleApprove = () => {
-    if (confirm("Are you sure you want to create the client portal? This will lock the project and generate a shareable client portal link.")) {
+    if (confirm("Are you sure you want to create the client portal? This will publish the project and generate a shareable client portal link.")) {
       approveMutation.mutate({ projectId }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
           toast({ title: "Client Portal Created!", description: "Your client portal link is ready to share.", variant: "default" });
+        }
+      });
+    }
+  };
+
+  const handleUnpublish = () => {
+    if (confirm("Are you sure you want to unpublish this project? The client portal link will stop working until you publish again.")) {
+      unpublishMutation.mutate({ projectId }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+          toast({ title: "Project unpublished", description: "The project is now active. You can republish at any time." });
         }
       });
     }
@@ -118,14 +131,23 @@ export default function ProjectDetails() {
                   Create Client Portal
                 </button>
               ) : project.clientPortalToken && (
-                <a 
-                  href={`/client-portal/${project.clientPortalToken}`}
-                  target="_blank"
-                  className="w-full sm:w-auto ml-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  View Client Portal
-                  <ExternalLink className="w-5 h-5" />
-                </a>
+                <div className="flex items-center gap-2 ml-2">
+                  <a 
+                    href={`/client-portal/${project.clientPortalToken}`}
+                    target="_blank"
+                    className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
+                  >
+                    View Client Portal
+                    <ExternalLink className="w-5 h-5" />
+                  </a>
+                  <button
+                    onClick={handleUnpublish}
+                    disabled={unpublishMutation.isPending}
+                    className="px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    Unpublish
+                  </button>
+                </div>
               )}
 
               <button
@@ -173,7 +195,7 @@ function DocumentTypeView({ project, documents, isLoading, projectId }: { projec
   const deleteMutation = useDeleteDocumentSlot();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const isLocked = project.status === 'approved';
+  const isLocked = false;
 
   const groupedByType = useMemo(() => {
     const map: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number, subTypes?: Record<string, { docs: DocumentSlotWithSubcontractor[], approved: number, total: number }> }> = {};

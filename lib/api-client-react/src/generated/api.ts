@@ -1511,6 +1511,90 @@ export const useApproveProject = <
 };
 
 /**
+ * @summary Unpublish a project, setting it back to active status
+ */
+export const getUnpublishProjectUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/unpublish`;
+};
+
+export const unpublishProject = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getUnpublishProjectUrl(projectId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUnpublishProjectMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unpublishProject>>,
+    TError,
+    { projectId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unpublishProject>>,
+  TError,
+  { projectId: number },
+  TContext
+> => {
+  const mutationKey = ["unpublishProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unpublishProject>>,
+    { projectId: number }
+  > = (props) => {
+    const { projectId } = props ?? {};
+
+    return unpublishProject(projectId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnpublishProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unpublishProject>>
+>;
+
+export type UnpublishProjectMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Unpublish a project, setting it back to active status
+ */
+export const useUnpublishProject = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unpublishProject>>,
+    TError,
+    { projectId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unpublishProject>>,
+  TError,
+  { projectId: number },
+  TContext
+> => {
+  return useMutation(getUnpublishProjectMutationOptions(options));
+};
+
+/**
  * @summary List all subcontractors across all user projects
  */
 export const getListAllSubcontractorsUrl = () => {

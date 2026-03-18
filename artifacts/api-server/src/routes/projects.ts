@@ -313,4 +313,41 @@ router.post("/projects/:projectId/approve", async (req, res): Promise<void> => {
   });
 });
 
+router.post("/projects/:projectId/unpublish", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const params = ApproveProjectParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, params.data.projectId), eq(projectsTable.userId, req.user.id)));
+
+  if (!existing) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (existing.status !== "approved") {
+    res.status(400).json({ error: "Project is not published" });
+    return;
+  }
+
+  const [project] = await db
+    .update(projectsTable)
+    .set({ status: "active" })
+    .where(eq(projectsTable.id, params.data.projectId))
+    .returning();
+
+  const progress = await getProjectProgress(project.id);
+  res.json({ ...project, ...progress });
+});
+
 export default router;

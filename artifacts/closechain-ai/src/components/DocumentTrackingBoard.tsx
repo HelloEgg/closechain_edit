@@ -125,7 +125,7 @@ export function DocumentTrackingBoard({
 
                 <div className="grid gap-3">
                   {subsDocs.map(doc => (
-                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={project.status === 'approved'} />
+                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={false} />
                   ))}
                   {subsDocs.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground text-sm border-2 border-dashed border-border rounded-xl">
@@ -182,7 +182,7 @@ export function DocumentTrackingBoard({
               <div className="border-t border-border bg-background p-6">
                 <div className="grid gap-3">
                   {sectionDocs.map(doc => (
-                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={project.status === 'approved'} showVendor />
+                    <DocumentRow key={doc.id} doc={doc} projectId={project.id} isLocked={false} showVendor />
                   ))}
                   {sectionDocs.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground text-sm border-2 border-dashed border-border rounded-xl">

@@ -144,11 +144,6 @@ router.patch("/documents/:documentSlotId", async (req, res): Promise<void> => {
     return;
   }
 
-  if (ownership.projectId && await isProjectLocked(ownership.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
-
   if (parsed.data.filePath) {
     if (!validateUploadIntent(parsed.data.filePath, req.user.id, params.data.documentSlotId)) {
       res.status(403).json({ error: "Invalid or expired upload. Please request a new upload URL." });

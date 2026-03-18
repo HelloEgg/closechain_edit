@@ -8,7 +8,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
-import { isProjectLocked } from "../lib/projectGuards";
+
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -38,11 +38,6 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 
   if (docs.length === 0) {
     res.status(404).json({ error: "Document slot not found" });
-    return;
-  }
-
-  if (await isProjectLocked(docs[0].projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
     return;
   }
 
