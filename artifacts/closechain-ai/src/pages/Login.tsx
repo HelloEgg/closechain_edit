@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-import logoFull from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_00_AM_1773689296535.png";
+import logoFull from "@assets/ChatGPT Image Mar 17, 2026, 04_47_49 PM.png";
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth();
