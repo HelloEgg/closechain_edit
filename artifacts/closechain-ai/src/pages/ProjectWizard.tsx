@@ -325,9 +325,29 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
 
   const getOriginalIdx = (sub: SubEntry) => allSubs.findIndex((s: SubEntry) => s === sub);
 
-  const csiDocsMap = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    csiDivisions.forEach((d: CsiDivision) => { map[d.code] = d.requiredDocuments.map((r) => r.documentType); });
+  const csiDocsGrouped = useMemo(() => {
+    const map: Record<string, { standalone: string[]; parentMap: Record<string, string[]> }> = {};
+    csiDivisions.forEach((d: CsiDivision) => {
+      const standalone: string[] = [];
+      const parentMap: Record<string, string[]> = {};
+      for (const r of d.requiredDocuments) {
+        if (r.parentDocumentType) {
+          if (!parentMap[r.parentDocumentType]) parentMap[r.parentDocumentType] = [];
+          parentMap[r.parentDocumentType].push(r.documentType);
+        } else {
+          standalone.push(r.documentType);
+        }
+      }
+      map[d.code] = { standalone, parentMap };
+    });
+    return map;
+  }, [csiDivisions]);
+
+  const csiAllDocsFlat = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    csiDivisions.forEach((d: CsiDivision) => {
+      map[d.code] = new Set(d.requiredDocuments.map((r) => r.documentType));
+    });
     return map;
   }, [csiDivisions]);
 
@@ -342,8 +362,9 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
         {subs.map((sub: SubEntry, localIdx: number) => {
           const origIdx = getOriginalIdx(sub);
           const isExpanded = expandedIdx === localIdx;
-          const availableDocs = csiDocsMap[sub.csiCode] || [];
-          const allDocs = [...new Set([...availableDocs, ...sub.documentTypes])];
+          const grouped = csiDocsGrouped[sub.csiCode] || { standalone: [], parentMap: {} };
+          const knownDocs = csiAllDocsFlat[sub.csiCode] || new Set<string>();
+          const customDocs = sub.documentTypes.filter((d) => !knownDocs.has(d));
 
           return (
             <div key={origIdx} className="rounded-xl border border-border overflow-hidden">
@@ -355,11 +376,32 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </div>
               {isExpanded && (
-                <div className="border-t border-border p-4 bg-background space-y-2">
-                  {allDocs.map(doc => (
-                    <label key={doc} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                <div className="border-t border-border p-4 bg-background space-y-1">
+                  {grouped.standalone.map(doc => (
+                    <label key={doc} className="flex items-center gap-3 py-1.5 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors px-1">
                       <input type="checkbox" checked={sub.documentTypes.includes(doc)} onChange={() => onToggleDoc(origIdx, doc)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
                       <span className="text-sm text-foreground">{doc}</span>
+                    </label>
+                  ))}
+                  {Object.entries(grouped.parentMap).map(([parent, children]) => (
+                    <div key={parent} className="mt-1">
+                      <div className="flex items-center gap-2 py-1 px-1">
+                        <div className="w-1 h-4 bg-primary/30 rounded-full shrink-0" />
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{parent}</span>
+                      </div>
+                      {children.map((doc) => (
+                        <label key={doc} className="flex items-center gap-3 py-1.5 pl-5 pr-1 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors">
+                          <input type="checkbox" checked={sub.documentTypes.includes(doc)} onChange={() => onToggleDoc(origIdx, doc)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
+                          <span className="text-sm text-foreground">{doc}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                  {customDocs.map(doc => (
+                    <label key={doc} className="flex items-center gap-3 py-1.5 cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors px-1">
+                      <input type="checkbox" checked={sub.documentTypes.includes(doc)} onChange={() => onToggleDoc(origIdx, doc)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
+                      <span className="text-sm text-foreground">{doc}</span>
+                      <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">custom</span>
                     </label>
                   ))}
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
