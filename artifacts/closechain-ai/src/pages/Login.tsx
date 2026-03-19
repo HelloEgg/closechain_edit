@@ -27,7 +27,6 @@ export default function Login() {
           className="absolute right-0 bottom-0 w-1/2 h-full object-cover opacity-20 object-left mix-blend-multiply"
         />
       </div>
-
       <div className="relative z-10 flex-1 flex flex-col justify-center px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="flex items-center mb-10">
@@ -37,7 +36,7 @@ export default function Login() {
           <h2 className="mt-8 text-3xl font-display font-bold tracking-tight text-foreground">
             Stop Searching. Just Ask.
           </h2>
-          <p className="mt-2 text-3xl font-display font-bold tracking-tight text-foreground">
+          <p className="mt-2 font-display font-bold tracking-tight text-foreground text-[25px]">
             Chat With Your Building
           </p>
 
