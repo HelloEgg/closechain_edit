@@ -37,7 +37,7 @@ export default function Login() {
             Stop Searching. Just Ask.
           </h2>
           <p className="mt-2 font-display font-bold tracking-tight text-foreground text-[25px]">
-            Chat With Your Building
+            Chat With Your Space
           </p>
 
           <div className="mt-10">
