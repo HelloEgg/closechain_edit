@@ -87,7 +87,33 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
     .values({ ...projectData, userId: req.user.id })
     .returning();
 
-  let totalDocs = 0;
+  const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+
+  const [projectLevelSub] = await db
+    .insert(subcontractorsTable)
+    .values({
+      projectId: project.id,
+      vendorName: "__PROJECT_LEVEL__",
+      vendorCode: "PROJECT",
+      csiCode: "000000",
+    })
+    .returning();
+
+  const projectLevelDocs = [
+    { documentType: "Permit", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Permit") },
+    { documentType: "Document Type", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Document Type") },
+  ];
+  await db.insert(documentSlotsTable).values(
+    projectLevelDocs.map((d) => ({
+      subcontractorId: projectLevelSub.id,
+      documentType: d.documentType,
+      parentDocumentType: d.parentDocumentType,
+      packageSection: d.packageSection,
+      status: "not_submitted" as const,
+    }))
+  );
+
+  let totalDocs = projectLevelDocs.length;
   for (const subData of subsData) {
     const [sub] = await db
       .insert(subcontractorsTable)
@@ -100,7 +126,6 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
       .returning();
 
     const division = csiLookup.get(subData.csiCode);
-    const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
     const parentLookup = new Map<string, string | null>();
     if (division) {
       for (const req of division.requiredDocuments) {

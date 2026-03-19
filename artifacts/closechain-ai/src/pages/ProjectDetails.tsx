@@ -365,8 +365,8 @@ function DocTypeDetailRow({ doc, isLocked, deleteMutation, queryClient, projectI
       <div className="flex items-center gap-3">
         <StatusBadge status={doc.status} />
         <div>
-          <p className="font-semibold text-foreground text-sm">{doc.vendorName || `Sub #${doc.subcontractorId}`}</p>
-          <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>
+          <p className="font-semibold text-foreground text-sm">{doc.vendorName === "__PROJECT_LEVEL__" ? "Project Level" : (doc.vendorName || `Sub #${doc.subcontractorId}`)}</p>
+          {doc.csiCode !== "000000" && <p className="text-xs text-muted-foreground">CSI {doc.csiCode}</p>}
           {doc.fileName && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">{doc.fileName}</p>}
         </div>
       </div>

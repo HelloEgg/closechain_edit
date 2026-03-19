@@ -24,8 +24,9 @@ export function SubcontractorList({ project }: { project: ProjectDetail }) {
 
   const filteredSubs = project.subcontractors.filter(
     (sub) =>
-      sub.vendorName.toLowerCase().includes(search.toLowerCase()) ||
-      sub.csiDivision.toLowerCase().includes(search.toLowerCase())
+      sub.csiCode !== "000000" &&
+      (sub.vendorName.toLowerCase().includes(search.toLowerCase()) ||
+      sub.csiDivision.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleDelete = (subId: number, vendorName: string) => {
