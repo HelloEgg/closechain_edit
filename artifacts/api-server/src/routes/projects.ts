@@ -101,7 +101,7 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
 
   const projectLevelDocs = [
     { documentType: "Permit", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Permit") },
-    { documentType: "Document Type", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Document Type") },
+    { documentType: "Inspection/Sign Offs", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Inspection/Sign Offs") },
   ];
   await db.insert(documentSlotsTable).values(
     projectLevelDocs.map((d) => ({
