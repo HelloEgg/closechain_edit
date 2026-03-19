@@ -31,14 +31,14 @@ export default function Login() {
       <div className="relative z-10 flex-1 flex flex-col justify-center px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="flex items-center mb-10">
-            <img src={logoFull} alt="Closechain AI" className="h-40 w-auto -ml-6" />
+            <img src={logoFull} alt="Closechain AI" className="h-80 w-auto -ml-6" />
           </div>
           
           <h2 className="mt-8 text-3xl font-display font-bold tracking-tight text-foreground">
-            Sign in to your account
+            Stop Searching. Just Ask.
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage closeout packages, track subcontractor documents, and streamline project handover.
+            Chat With Your Building
           </p>
 
           <div className="mt-10">
