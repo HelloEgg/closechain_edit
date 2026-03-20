@@ -51,7 +51,7 @@ function ManagerAIPanel() {
       >
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-primary" />
-          <span>Closeout VP</span>
+          <span>Closechain Agent</span>
         </div>
         {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
       </button>
