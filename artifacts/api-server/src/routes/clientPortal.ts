@@ -312,19 +312,26 @@ router.post("/client-portal/:token/ai/query", async (req, res): Promise<void> =>
     const subTotal = subDocs.length;
     const subUploaded = subDocs.filter((d) => d.status === "uploaded" || d.status === "approved").length;
     const subApproved = subDocs.filter((d) => d.status === "approved").length;
-    const missing = subDocs.filter((d) => d.status === "not_submitted").map((d) => d.documentType);
 
     contextLines.push(`    - ${sub.vendorName} (CSI ${sub.csiCode}): ${subUploaded}/${subTotal} docs submitted, ${subApproved} approved`);
-    if (missing.length > 0) {
-      contextLines.push(`      Missing: ${missing.join(", ")}`);
+    contextLines.push(`      Documents:`);
+    for (const doc of subDocs) {
+      const parentLabel = doc.parentDocumentType ? ` (under ${doc.parentDocumentType})` : "";
+      contextLines.push(`        - ${doc.documentType}${parentLabel}: ${doc.status}${doc.fileName ? ` [file: ${doc.fileName}]` : ""}`);
     }
   }
 
-  const systemPrompt = `You are the Closechain Agent, an intelligent assistant embedded in the client portal for the project "${project.name}". You help clients understand the status of their closeout package — including document submissions, subcontractor progress, and overall completion.
+  const systemPrompt = `You are the Closechain Agent, an intelligent assistant embedded in the client portal for the project "${project.name}". You help clients understand the status of their closeout package.
 
-You ONLY have data about this single project. Do not reference or speculate about other projects. If a question is outside the scope of this project's data, politely say you can only answer questions about "${project.name}".
+The user is already viewing the client portal for "${project.name}" — they do NOT need to tell you which project they are asking about. Every question they ask is about this project. Never ask them to specify a project name.
 
-Answer concisely and helpfully using the project data provided. When listing items, use clear formatting.
+You have full access to this project's real-time data below, including all subcontractors, their document submission statuses, document types (warranties, permits, as-builts, O&Ms, testing reports, etc.), and overall progress. Use this data to answer questions thoroughly.
+
+When a user asks about specific document types (e.g. "how many warranties do I have?"), look through ALL subcontractors' document lists in the data below and find matches. The documentType field contains the type name (e.g. "Warranty", "As-Built Drawings", etc.).
+
+If a question is genuinely outside the scope of construction closeout packages or this project's data, politely let them know.
+
+Answer concisely and helpfully. When listing items, use clear formatting.
 
 ${contextLines.join("\n")}`;
 

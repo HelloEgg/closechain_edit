@@ -66,7 +66,11 @@ export default function ClientPortal() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+        <PortalAgent token={token} />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <Tabs.Root defaultValue="subcontractor" className="flex flex-col w-full">
           <Tabs.List className="flex shrink-0 border-b border-border mb-6">
             <Tabs.Trigger value="subcontractor" className="px-6 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-colors flex items-center gap-2">
@@ -86,8 +90,6 @@ export default function ClientPortal() {
           </Tabs.Content>
         </Tabs.Root>
       </div>
-
-      <PortalAgent token={token} />
     </div>
   );
 }

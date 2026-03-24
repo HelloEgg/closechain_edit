@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useClientPortalAiQuery, type AiQueryBodyConversationHistoryItem } from "@workspace/api-client-react";
-import { Bot, Send, X, MessageCircle } from "lucide-react";
+import { Bot, Send, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -9,24 +9,15 @@ interface ChatMessage {
 }
 
 export function PortalAgent({ token }: { token: string }) {
-  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const mutation = useClientPortalAiQuery();
 
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      textareaRef.current?.focus();
-    }
-  }, [isOpen]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const sendMessage = useCallback(async (question: string) => {
     if (!question.trim() || mutation.isPending || !token) return;
@@ -63,114 +54,85 @@ export function PortalAgent({ token }: { token: string }) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSend();
     }
   };
 
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-full shadow-xl hover:bg-primary/90 transition-all hover:scale-105",
-          isOpen && "hidden"
-        )}
-      >
-        <MessageCircle className="w-5 h-5" />
-        <span className="font-semibold text-sm">Closechain Agent</span>
-      </button>
+  const clearHistory = () => {
+    setMessages([]);
+    setInput("");
+  };
 
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-card rounded-2xl shadow-2xl border border-border flex flex-col overflow-hidden" style={{ height: "520px" }}>
-          <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5" />
-              <span className="font-semibold text-sm">Closechain Agent</span>
-            </div>
+  return (
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+      <div className="px-6 py-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Bot className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Chat With Your Space - Closechain Agent"
+              disabled={mutation.isPending}
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 placeholder:text-muted-foreground/70"
+            />
             <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg hover:bg-white/20 transition-colors"
+              onClick={handleSend}
+              disabled={!input.trim() || mutation.isPending}
+              className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0"
             >
-              <X className="w-4 h-4" />
+              <Send className="w-4 h-4" />
             </button>
           </div>
+        </div>
+        {messages.length > 0 && (
+          <button
+            onClick={clearHistory}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex-shrink-0"
+            title="Clear conversation"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
-            {messages.length === 0 && (
-              <div className="text-center py-8">
-                <Bot className="w-10 h-10 text-primary/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-1 font-medium">How can I help you?</p>
-                <p className="text-xs text-muted-foreground mb-4">Ask me about this project's closeout status, documents, or subcontractors.</p>
-                <div className="space-y-2">
-                  {[
-                    "What's the overall project progress?",
-                    "Which documents are still missing?",
-                    "Show me subcontractor status",
-                  ].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => { setInput(suggestion); textareaRef.current?.focus(); }}
-                      className="block w-full text-left text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground transition-colors"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {messages.map((msg, i) => (
-              <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-secondary text-foreground rounded-bl-sm"
-                  )}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {mutation.isPending && (
-              <div className="flex justify-start">
-                <div className="bg-secondary text-foreground rounded-xl rounded-bl-sm px-3.5 py-2.5">
-                  <span className="inline-flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </span>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div className="p-3 border-t border-border">
-            <div className="flex gap-2 items-end">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about this project..."
-                rows={2}
-                disabled={mutation.isPending}
-                className="flex-1 px-3 py-2 text-sm rounded-xl border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || mutation.isPending}
-                className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0"
+      {messages.length > 0 && (
+        <div className="border-t border-border px-6 py-4 max-h-[400px] overflow-y-auto space-y-4">
+          {messages.map((msg, i) => (
+            <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+              <div
+                className={cn(
+                  "max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-br-sm"
+                    : "bg-secondary text-foreground rounded-bl-sm"
+                )}
               >
-                <Send className="w-4 h-4" />
-              </button>
+                {msg.content}
+              </div>
             </div>
-          </div>
+          ))}
+          {mutation.isPending && (
+            <div className="flex justify-start">
+              <div className="bg-secondary text-foreground rounded-xl rounded-bl-sm px-4 py-3">
+                <span className="inline-flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       )}
-    </>
+    </div>
   );
 }
