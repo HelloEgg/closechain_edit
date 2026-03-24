@@ -11,13 +11,16 @@ interface ChatMessage {
 export function PortalAgent({ token }: { token: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mutation = useClientPortalAiQuery();
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = chatContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [messages, mutation.isPending]);
 
   const sendMessage = useCallback(async (question: string) => {
     if (!question.trim() || mutation.isPending || !token) return;
@@ -103,8 +106,12 @@ export function PortalAgent({ token }: { token: string }) {
         )}
       </div>
 
-      {messages.length > 0 && (
-        <div className="border-t border-border px-6 py-4 max-h-[400px] overflow-y-auto space-y-4">
+      {(messages.length > 0 || mutation.isPending) && (
+        <div
+          ref={chatContainerRef}
+          className="border-t border-border px-6 py-4 overflow-y-auto space-y-4"
+          style={{ maxHeight: "320px" }}
+        >
           {messages.map((msg, i) => (
             <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
               <div
@@ -130,7 +137,6 @@ export function PortalAgent({ token }: { token: string }) {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
       )}
     </div>
