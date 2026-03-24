@@ -4,6 +4,7 @@ import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@wor
 import { GetClientPortalParams } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import archiver from "archiver";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -79,6 +80,100 @@ router.get("/client-portal/:token", async (req, res): Promise<void> => {
     approvedDocuments: approvedDocs,
     subcontractors: subsWithDocs,
   });
+});
+
+router.get("/client-portal/:token/download-all", async (req, res): Promise<void> => {
+  const params = GetClientPortalParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const token = params.data.token;
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.clientPortalToken, token));
+
+  if (!project || project.status !== "approved") {
+    res.status(404).json({ error: "Portal not found or not approved" });
+    return;
+  }
+
+  const subs = await db
+    .select()
+    .from(subcontractorsTable)
+    .where(eq(subcontractorsTable.projectId, project.id))
+    .orderBy(subcontractorsTable.csiCode);
+
+  const subsWithDocs = await Promise.all(
+    subs.map(async (sub) => {
+      const docs = await db
+        .select()
+        .from(documentSlotsTable)
+        .where(eq(documentSlotsTable.subcontractorId, sub.id))
+        .orderBy(documentSlotsTable.documentType);
+
+      const division = await getCsiDivision(sub.csiCode);
+      return { sub, division, docs };
+    })
+  );
+
+  const docsWithFiles = subsWithDocs.flatMap(({ sub, division, docs }) =>
+    docs
+      .filter((d) => d.filePath)
+      .map((d) => ({
+        filePath: d.filePath!,
+        fileName: d.fileName || "document",
+        documentType: d.documentType,
+        packageSection: d.packageSection || "General",
+        vendorName: sub.vendorName,
+        csiCode: sub.csiCode,
+        divisionName: division?.name || "Unknown",
+      }))
+  );
+
+  if (docsWithFiles.length === 0) {
+    res.status(404).json({ error: "No documents available for download" });
+    return;
+  }
+
+  const sanitize = (name: string) => name.replace(/[<>:"/\\|?*]/g, "_").trim();
+  const projectFolder = sanitize(project.name);
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${projectFolder} - Closeout Package.zip"`
+  );
+
+  const archive = archiver("zip", { zlib: { level: 5 } });
+  archive.on("error", (err) => {
+    console.error("Archive error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to create archive" });
+    }
+  });
+  archive.pipe(res);
+
+  for (const doc of docsWithFiles) {
+    try {
+      const result = await objectStorageService.downloadObjectDirect(doc.filePath);
+      if (!result) continue;
+
+      const ext = doc.fileName.includes(".") ? "" : ".pdf";
+      const subFolder = sanitize(`${doc.vendorName} (${doc.csiCode})`);
+      const sectionFolder = sanitize(doc.packageSection);
+      const fileName = sanitize(doc.fileName) + ext;
+      const archivePath = `${projectFolder}/${subFolder}/${sectionFolder}/${fileName}`;
+
+      archive.append(result.data, { name: archivePath });
+    } catch (err) {
+      console.warn(`Skipping file ${doc.filePath}:`, err);
+    }
+  }
+
+  await archive.finalize();
 });
 
 router.get("/client-portal/:token/download/*path", async (req, res): Promise<void> => {

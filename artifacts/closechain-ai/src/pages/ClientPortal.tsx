@@ -1,8 +1,8 @@
 import { useGetClientPortal, type ClientPortalData, type ClientPortalSubcontractor, type ClientPortalDocument } from "@workspace/api-client-react";
 import { useParams } from "wouter";
-import { Building2, CheckCircle2, Download, FileText, HardHat } from "lucide-react";
+import { Building2, CheckCircle2, Download, FileText, HardHat, FolderArchive } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 
 export default function ClientPortal() {
@@ -60,6 +60,8 @@ export default function ClientPortal() {
               <p className="text-xs uppercase tracking-wider opacity-80 font-medium">Docs Approved</p>
             </div>
           </div>
+
+          <DownloadAllButton token={token} hasDocuments={portalData.uploadedDocuments > 0} />
         </div>
       </div>
 
@@ -83,6 +85,62 @@ export default function ClientPortal() {
           </Tabs.Content>
         </Tabs.Root>
       </div>
+    </div>
+  );
+}
+
+function DownloadAllButton({ token, hasDocuments }: { token: string; hasDocuments: boolean }) {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadAll = useCallback(async () => {
+    if (downloading || !hasDocuments) return;
+    setDownloading(true);
+    try {
+      const url = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/client-portal/${token}/download-all`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Download failed" }));
+        alert(err.error || "Failed to download documents");
+        return;
+      }
+      const blob = await response.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      const disposition = response.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="(.+)"/);
+      a.download = filenameMatch?.[1] || "Closeout Package.zip";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch {
+      alert("Failed to download documents. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [token, downloading, hasDocuments]);
+
+  if (!hasDocuments) return null;
+
+  return (
+    <div className="mt-6">
+      <button
+        onClick={handleDownloadAll}
+        disabled={downloading}
+        className="inline-flex items-center gap-2.5 px-6 py-3 bg-white text-primary font-semibold rounded-xl hover:bg-white/90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+      >
+        {downloading ? (
+          <>
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            Preparing Download...
+          </>
+        ) : (
+          <>
+            <FolderArchive className="w-5 h-5" />
+            Download All Documents
+          </>
+        )}
+      </button>
     </div>
   );
 }

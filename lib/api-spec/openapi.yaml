@@ -790,6 +790,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /client-portal/{token}/download-all:
+    get:
+      operationId: clientPortalDownloadAll
+      tags: [client-portal]
+      summary: Download all documents as a ZIP file (public, token-scoped)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ZIP archive containing all documents
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Portal not found or no documents available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /client-portal/{token}/download/{filePath}:
     get:
       operationId: clientPortalDownload
