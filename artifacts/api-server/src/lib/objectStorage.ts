@@ -1,6 +1,10 @@
 import { Storage, File } from "@google-cloud/storage";
+import { Client as ReplitStorageClient } from "@replit/object-storage";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+import * as mime from "mime-types";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -28,6 +32,17 @@ export const objectStorageClient = new Storage({
   },
   projectId: "",
 });
+
+const LOCAL_UPLOAD_DIR = path.join(process.cwd(), ".data", "uploads");
+fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
+
+let replitClient: ReplitStorageClient | null = null;
+try {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (bucketId) {
+    replitClient = new ReplitStorageClient({ bucketId });
+  }
+} catch {}
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -78,9 +93,13 @@ export class ObjectStorageService {
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectName);
 
-      const [exists] = await file.exists();
-      if (exists) {
-        return file;
+      try {
+        const [exists] = await file.exists();
+        if (exists) {
+          return file;
+        }
+      } catch {
+        continue;
       }
     }
 
@@ -126,6 +145,81 @@ export class ObjectStorageService {
       method: "PUT",
       ttlSec: 900,
     });
+  }
+
+  async uploadFileDirect(fileBuffer: Buffer, contentType: string, originalName?: string): Promise<string> {
+    const objectId = randomUUID();
+    const ext = originalName ? path.extname(originalName) : (mime.extension(contentType) ? `.${mime.extension(contentType)}` : "");
+    const fileName = `${objectId}${ext}`;
+    const objectPath = `/objects/uploads/${objectId}`;
+
+    const localPath = path.join(LOCAL_UPLOAD_DIR, fileName);
+    fs.writeFileSync(localPath, fileBuffer);
+
+    const metaPath = `${localPath}.meta.json`;
+    fs.writeFileSync(metaPath, JSON.stringify({ contentType, originalName, objectPath }));
+
+    if (replitClient) {
+      const privateObjectDir = this.getPrivateObjectDir();
+      const { objectName } = parseObjectPath(`${privateObjectDir}/uploads/${objectId}`);
+      try {
+        await Promise.race([
+          replitClient.uploadFromBytes(objectName, fileBuffer),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000)),
+        ]);
+      } catch (e) {
+        console.warn("Object storage replication failed (file saved locally):", (e as Error).message);
+      }
+    }
+
+    return objectPath;
+  }
+
+  async downloadObjectDirect(objectPath: string): Promise<{ data: Buffer; contentType: string } | null> {
+    if (!objectPath.startsWith("/objects/")) {
+      return null;
+    }
+
+    const parts = objectPath.split("/");
+    const objectId = parts[parts.length - 1];
+
+    const files = fs.readdirSync(LOCAL_UPLOAD_DIR);
+    const match = files.find((f) => f.startsWith(objectId) && !f.endsWith(".meta.json"));
+
+    if (match) {
+      const localPath = path.join(LOCAL_UPLOAD_DIR, match);
+      const metaPath = `${path.join(LOCAL_UPLOAD_DIR, match)}.meta.json`;
+      const data = fs.readFileSync(localPath);
+      let contentType = "application/octet-stream";
+      if (fs.existsSync(metaPath)) {
+        try {
+          const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+          contentType = meta.contentType || contentType;
+        } catch {}
+      } else {
+        contentType = mime.lookup(match) || contentType;
+      }
+      return { data, contentType };
+    }
+
+    if (replitClient) {
+      try {
+        const entityId = parts.slice(2).join("/");
+        let entityDir = this.getPrivateObjectDir();
+        if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
+        const { objectName } = parseObjectPath(`${entityDir}${entityId}`);
+
+        const result = await Promise.race([
+          replitClient.downloadAsBytes(objectName),
+          new Promise<{ ok: false }>((resolve) => setTimeout(() => resolve({ ok: false }), 10000)),
+        ]);
+        if (result.ok && (result as any).value) {
+          return { data: Buffer.from((result as any).value), contentType: "application/octet-stream" };
+        }
+      } catch {}
+    }
+
+    return null;
   }
 
   async getObjectEntityFile(objectPath: string): Promise<File> {

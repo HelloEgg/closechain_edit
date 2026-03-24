@@ -1,6 +1,5 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { Readable } from "stream";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import { GetClientPortalParams } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
@@ -111,18 +110,18 @@ router.get("/client-portal/:token/download/*path", async (req, res): Promise<voi
   }
 
   try {
-    const objectFile = await objectStorageService.getObjectEntityFile(fullObjectPath);
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
+    const result = await objectStorageService.downloadObjectDirect(fullObjectPath);
+    if (!result) {
+      res.status(404).json({ error: "File not found" });
+      return;
     }
+
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Content-Length", result.data.length);
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(result.data);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       res.status(404).json({ error: "File not found" });

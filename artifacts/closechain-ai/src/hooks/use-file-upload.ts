@@ -1,37 +1,30 @@
 import { useState } from "react";
-import { useRequestUploadUrl } from "@workspace/api-client-react";
 
 export function useFileUpload() {
   const [isUploading, setIsUploading] = useState(false);
-  const requestUrlMutation = useRequestUploadUrl();
 
   const uploadFile = async (file: File, documentSlotId: number) => {
     setIsUploading(true);
     try {
-      const res = await requestUrlMutation.mutateAsync({
-        data: {
-          name: file.name,
-          size: file.size,
-          contentType: file.type || "application/octet-stream",
-          documentSlotId,
-        }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("documentSlotId", String(documentSlotId));
+
+      const res = await fetch("/api/storage/uploads/direct", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
       });
 
-      const uploadRes = await fetch(res.uploadURL, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error(`Upload failed with status: ${uploadRes.status}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Upload failed with status: ${res.status}`);
       }
 
+      const data = await res.json();
       return {
-        objectPath: res.objectPath,
-        fileName: file.name,
+        objectPath: data.objectPath,
+        fileName: data.fileName || file.name,
       };
     } finally {
       setIsUploading(false);
@@ -40,6 +33,6 @@ export function useFileUpload() {
 
   return {
     uploadFile,
-    isUploading: isUploading || requestUrlMutation.isPending,
+    isUploading,
   };
 }

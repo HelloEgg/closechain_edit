@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import multer from "multer";
 import { Readable } from "stream";
 import { eq, and } from "drizzle-orm";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
@@ -12,6 +13,56 @@ import { ObjectPermission } from "../lib/objectAcl";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+router.post("/storage/uploads/direct", upload.single("file"), async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const file = req.file;
+  const documentSlotId = parseInt(req.body.documentSlotId, 10);
+
+  if (!file || isNaN(documentSlotId)) {
+    res.status(400).json({ error: "Missing file or documentSlotId" });
+    return;
+  }
+
+  const docs = await db
+    .select({ id: documentSlotsTable.id, projectId: projectsTable.id })
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .innerJoin(projectsTable, eq(subcontractorsTable.projectId, projectsTable.id))
+    .where(and(eq(documentSlotsTable.id, documentSlotId), eq(projectsTable.userId, req.user.id)));
+
+  if (docs.length === 0) {
+    res.status(404).json({ error: "Document slot not found" });
+    return;
+  }
+
+  try {
+    const objectPath = await objectStorageService.uploadFileDirect(
+      file.buffer,
+      file.mimetype,
+      file.originalname
+    );
+
+    pendingUploads.set(objectPath, {
+      userId: req.user.id,
+      documentSlotId,
+      expiresAt: Date.now() + 30 * 60 * 1000,
+    });
+
+    res.json({
+      objectPath,
+      fileName: file.originalname,
+    });
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    res.status(500).json({ error: "Failed to upload file" });
+  }
+});
 
 const pendingUploads = new Map<string, { userId: string; documentSlotId: number; expiresAt: number }>();
 
@@ -124,7 +175,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
     if (!req.isAuthenticated()) {
       res.status(401).json({ error: "Unauthorized" });
@@ -143,17 +193,18 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       return;
     }
 
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
+    const result = await objectStorageService.downloadObjectDirect(objectPath);
+    if (!result) {
+      res.status(404).json({ error: "Object not found" });
+      return;
     }
+
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Content-Length", result.data.length);
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(result.data);
   } catch (error) {
     console.error("Error serving object:", error);
     if (error instanceof ObjectNotFoundError) {

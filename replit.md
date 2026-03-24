@@ -14,7 +14,7 @@ Closechain AI is a web application for General Contractors in interior construct
 - **Frontend**: React + Vite + Tailwind CSS + Radix UI
 - **Database**: PostgreSQL + Drizzle ORM
 - **Auth**: Replit Auth (OpenID Connect with PKCE)
-- **File Storage**: Replit Object Storage (GCS presigned URL flow)
+- **File Storage**: Replit Object Storage (direct server-side upload via @replit/object-storage + local filesystem fallback)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
@@ -60,7 +60,7 @@ artifacts-monorepo/
 - **Hierarchical Document Types**: Document Type Plus items (sub-requirements under a Document Type) are stored with `parentDocumentType` and grouped visually in Document Type views. E.g., HVAC's "Equipment Start Up Reports" appears under "Testing/Demonstration". This is data-driven from the DB — no hardcoded trade logic in UI.
 - **Document Section View**: Toggle between "By Subcontractor" and "By Section" views on the document tracking board
 - **CSV/Excel Import**: Subcontractors can be bulk imported via CSV or Excel (.xlsx/.xls) with columns: Vendor Name, Vendor Code, CSI Code
-- **Secure File Upload**: Uses presigned URLs via Object Storage with intent tracking (30-min expiry); documentSlotId required to request upload URL
+- **Secure File Upload**: Direct server-side upload via multer (50MB limit) with local filesystem storage + async Replit Object Storage replication; intent tracking (30-min expiry); documentSlotId required
 - **GC Approval Flow**: Approve a project to generate a client portal token/link. Approved projects are mutation-locked.
 - **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token` with dual sorting (By Subcontractor / By Document Type)
 - **Approval Locking**: All mutation endpoints (create/update/delete subcontractors, documents, project updates) reject changes when project.status === 'approved'
@@ -87,7 +87,8 @@ All routes mounted at `/api`:
 - `GET /closeout-sections` — List all 9 closeout package sections
 - `GET /client-portal/:token` — Public client portal data
 - `GET /client-portal/:token/download/*path` — Public file download (token-scoped)
-- `POST /storage/uploads/request-url` — Request presigned upload URL
+- `POST /storage/uploads/direct` — Direct file upload (multipart form-data, primary endpoint)
+- `POST /storage/uploads/request-url` — Request presigned upload URL (legacy fallback)
 - `GET /storage/public-objects/*filePath` — Get public object
 - `GET /storage/objects/*` — Get storage object (authed)
 
