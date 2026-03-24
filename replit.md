@@ -62,7 +62,8 @@ artifacts-monorepo/
 - **CSV/Excel Import**: Subcontractors can be bulk imported via CSV or Excel (.xlsx/.xls) with columns: Vendor Name, Vendor Code, CSI Code
 - **Secure File Upload**: Direct server-side upload via multer (50MB limit) with local filesystem storage + async Replit Object Storage replication; intent tracking (30-min expiry); documentSlotId required
 - **GC Approval Flow**: Approve a project to generate a client portal token/link. Approved projects are mutation-locked.
-- **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token` with dual sorting (By Subcontractor / By Document Type)
+- **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token` with dual sorting (By Subcontractor / By Document Type) and embedded Closechain Agent AI chat
+- **Client Portal Closechain Agent**: AI chatbot scoped to only the specific project of each client portal. Uses the portal token to load project data and answers questions only about that project's subcontractors, documents, and progress.
 - **Approval Locking**: All mutation endpoints (create/update/delete subcontractors, documents, project updates) reject changes when project.status === 'approved'
 
 ## API Routes
@@ -88,6 +89,7 @@ All routes mounted at `/api`:
 - `GET /client-portal/:token` — Public client portal data
 - `GET /client-portal/:token/download-all` — Download all project documents as ZIP with folder structure (public, token-scoped)
 - `GET /client-portal/:token/download/*path` — Public file download (token-scoped)
+- `POST /client-portal/:token/ai/query` — Client portal Closechain Agent AI query (public, token-scoped, project-specific)
 - `POST /storage/uploads/direct` — Direct file upload (multipart form-data, primary endpoint)
 - `POST /storage/uploads/request-url` — Request presigned upload URL (legacy fallback)
 - `GET /storage/public-objects/*filePath` — Get public object

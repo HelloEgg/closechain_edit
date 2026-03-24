@@ -330,6 +330,37 @@ export const ApproveProjectResponse = zod.object({
 });
 
 /**
+ * @summary Unpublish a project, setting it back to active status
+ */
+export const UnpublishProjectParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const UnpublishProjectHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — Bearer <sid>."),
+});
+
+export const UnpublishProjectResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  jobNumber: zod.string().nullish(),
+  description: zod.string().nullish(),
+  clientName: zod.string().nullish(),
+  address: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  status: zod.enum(["active", "approved", "archived"]),
+  clientPortalToken: zod.string().nullish(),
+  totalDocuments: zod.number(),
+  uploadedDocuments: zod.number(),
+  approvedDocuments: zod.number(),
+  progress: zod.number(),
+  createdAt: zod.date(),
+});
+
+/**
  * @summary List all subcontractors across all user projects
  */
 export const ListAllSubcontractorsHeader = zod.object({
@@ -649,11 +680,41 @@ export const GetClientPortalResponse = zod.object({
 });
 
 /**
+ * @summary Download all documents as a ZIP file (public, token-scoped)
+ */
+export const ClientPortalDownloadAllParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+/**
  * @summary Download a file from the client portal (public, token-scoped)
  */
 export const ClientPortalDownloadParams = zod.object({
   token: zod.coerce.string(),
   filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Ask the Closechain Agent a question scoped to a specific client portal project
+ */
+export const ClientPortalAiQueryParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const ClientPortalAiQueryBody = zod.object({
+  question: zod.string().min(1),
+  conversationHistory: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const ClientPortalAiQueryResponse = zod.object({
+  content: zod.string(),
 });
 
 /**

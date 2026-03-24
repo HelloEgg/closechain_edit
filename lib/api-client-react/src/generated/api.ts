@@ -2791,6 +2791,95 @@ export function useGetClientPortal<
 }
 
 /**
+ * @summary Download all documents as a ZIP file (public, token-scoped)
+ */
+export const getClientPortalDownloadAllUrl = (token: string) => {
+  return `/api/client-portal/${token}/download-all`;
+};
+
+export const clientPortalDownloadAll = async (
+  token: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getClientPortalDownloadAllUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getClientPortalDownloadAllQueryKey = (token: string) => {
+  return [`/api/client-portal/${token}/download-all`] as const;
+};
+
+export const getClientPortalDownloadAllQueryOptions = <
+  TData = Awaited<ReturnType<typeof clientPortalDownloadAll>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof clientPortalDownloadAll>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getClientPortalDownloadAllQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof clientPortalDownloadAll>>
+  > = ({ signal }) =>
+    clientPortalDownloadAll(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof clientPortalDownloadAll>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ClientPortalDownloadAllQueryResult = NonNullable<
+  Awaited<ReturnType<typeof clientPortalDownloadAll>>
+>;
+export type ClientPortalDownloadAllQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Download all documents as a ZIP file (public, token-scoped)
+ */
+
+export function useClientPortalDownloadAll<
+  TData = Awaited<ReturnType<typeof clientPortalDownloadAll>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof clientPortalDownloadAll>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getClientPortalDownloadAllQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Download a file from the client portal (public, token-scoped)
  */
 export const getClientPortalDownloadUrl = (token: string, filePath: string) => {
@@ -2888,6 +2977,93 @@ export function useClientPortalDownload<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Ask the Closechain Agent a question scoped to a specific client portal project
+ */
+export const getClientPortalAiQueryUrl = (token: string) => {
+  return `/api/client-portal/${token}/ai/query`;
+};
+
+export const clientPortalAiQuery = async (
+  token: string,
+  aiQueryBody: AiQueryBody,
+  options?: RequestInit,
+): Promise<AiQueryResponse> => {
+  return customFetch<AiQueryResponse>(getClientPortalAiQueryUrl(token), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiQueryBody),
+  });
+};
+
+export const getClientPortalAiQueryMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clientPortalAiQuery>>,
+    TError,
+    { token: string; data: BodyType<AiQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clientPortalAiQuery>>,
+  TError,
+  { token: string; data: BodyType<AiQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["clientPortalAiQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clientPortalAiQuery>>,
+    { token: string; data: BodyType<AiQueryBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+
+    return clientPortalAiQuery(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClientPortalAiQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clientPortalAiQuery>>
+>;
+export type ClientPortalAiQueryMutationBody = BodyType<AiQueryBody>;
+export type ClientPortalAiQueryMutationError = ErrorType<void>;
+
+/**
+ * @summary Ask the Closechain Agent a question scoped to a specific client portal project
+ */
+export const useClientPortalAiQuery = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clientPortalAiQuery>>,
+    TError,
+    { token: string; data: BodyType<AiQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clientPortalAiQuery>>,
+  TError,
+  { token: string; data: BodyType<AiQueryBody> },
+  TContext
+> => {
+  return useMutation(getClientPortalAiQueryMutationOptions(options));
+};
 
 /**
  * @summary Ask Manager AI a question about projects and documents

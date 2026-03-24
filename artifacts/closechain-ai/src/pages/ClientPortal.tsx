@@ -4,6 +4,7 @@ import { Building2, CheckCircle2, Download, FileText, HardHat, FolderArchive } f
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useState, useMemo, useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
+import { PortalAgent } from "@/components/portal/PortalAgent";
 
 export default function ClientPortal() {
   const { token } = useParams<{ token: string }>();
@@ -85,6 +86,8 @@ export default function ClientPortal() {
           </Tabs.Content>
         </Tabs.Root>
       </div>
+
+      <PortalAgent token={token} />
     </div>
   );
 }

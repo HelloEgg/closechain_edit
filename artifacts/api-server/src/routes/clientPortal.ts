@@ -1,10 +1,16 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
-import { GetClientPortalParams } from "@workspace/api-zod";
+import { GetClientPortalParams, AiQueryBody } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import archiver from "archiver";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -230,6 +236,116 @@ router.get("/client-portal/:token/download/*path", async (req, res): Promise<voi
     }
     console.error("Error serving portal download:", error);
     res.status(500).json({ error: "Failed to download file" });
+  }
+});
+
+router.post("/client-portal/:token/ai/query", async (req, res): Promise<void> => {
+  const params = GetClientPortalParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = AiQueryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
+    return;
+  }
+
+  const { question, conversationHistory } = parsed.data;
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.clientPortalToken, params.data.token));
+
+  if (!project || project.status !== "approved") {
+    res.status(404).json({ error: "Portal not found or not approved" });
+    return;
+  }
+
+  const subs = await db
+    .select({
+      id: subcontractorsTable.id,
+      vendorName: subcontractorsTable.vendorName,
+      csiCode: subcontractorsTable.csiCode,
+    })
+    .from(subcontractorsTable)
+    .where(eq(subcontractorsTable.projectId, project.id));
+
+  const subIds = subs.map((s) => s.id);
+
+  let docStats: { subcontractorId: number; documentType: string; parentDocumentType: string | null; status: string; fileName: string | null }[] = [];
+  if (subIds.length > 0) {
+    docStats = await db
+      .select({
+        subcontractorId: documentSlotsTable.subcontractorId,
+        documentType: documentSlotsTable.documentType,
+        parentDocumentType: documentSlotsTable.parentDocumentType,
+        status: documentSlotsTable.status,
+        fileName: documentSlotsTable.fileName,
+      })
+      .from(documentSlotsTable)
+      .where(inArray(documentSlotsTable.subcontractorId, subIds));
+  }
+
+  const contextLines: string[] = [];
+  contextLines.push("PROJECT DATA (today: " + new Date().toDateString() + ")");
+  contextLines.push("=".repeat(60));
+  
+  const total = docStats.length;
+  const uploaded = docStats.filter((d) => d.status === "uploaded" || d.status === "approved").length;
+  const approved = docStats.filter((d) => d.status === "approved").length;
+  const progress = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+
+  contextLines.push(`PROJECT: "${project.name}"`);
+  if (project.clientName) contextLines.push(`  Client: ${project.clientName}`);
+  if (project.description) contextLines.push(`  Description: ${project.description}`);
+  if (project.address) contextLines.push(`  Address: ${project.address}`);
+  if (project.jobNumber) contextLines.push(`  Job Number: ${project.jobNumber}`);
+  if (project.endDate) contextLines.push(`  End Date: ${project.endDate}`);
+  contextLines.push(`  Overall Progress: ${progress}% (${uploaded}/${total} docs submitted, ${approved} approved)`);
+  contextLines.push(`  Subcontractors (${subs.length}):`);
+
+  for (const sub of subs) {
+    const subDocs = docStats.filter((d) => d.subcontractorId === sub.id);
+    const subTotal = subDocs.length;
+    const subUploaded = subDocs.filter((d) => d.status === "uploaded" || d.status === "approved").length;
+    const subApproved = subDocs.filter((d) => d.status === "approved").length;
+    const missing = subDocs.filter((d) => d.status === "not_submitted").map((d) => d.documentType);
+
+    contextLines.push(`    - ${sub.vendorName} (CSI ${sub.csiCode}): ${subUploaded}/${subTotal} docs submitted, ${subApproved} approved`);
+    if (missing.length > 0) {
+      contextLines.push(`      Missing: ${missing.join(", ")}`);
+    }
+  }
+
+  const systemPrompt = `You are the Closechain Agent, an intelligent assistant embedded in the client portal for the project "${project.name}". You help clients understand the status of their closeout package — including document submissions, subcontractor progress, and overall completion.
+
+You ONLY have data about this single project. Do not reference or speculate about other projects. If a question is outside the scope of this project's data, politely say you can only answer questions about "${project.name}".
+
+Answer concisely and helpfully using the project data provided. When listing items, use clear formatting.
+
+${contextLines.join("\n")}`;
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemPrompt },
+    ...(conversationHistory || []),
+    { role: "user", content: question.trim() },
+  ];
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 1024,
+    });
+
+    const content = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
+    res.json({ content });
+  } catch (err) {
+    console.error("Client portal AI query error:", err);
+    res.status(500).json({ error: "Failed to generate AI response" });
   }
 });
 

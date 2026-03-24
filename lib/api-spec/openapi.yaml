@@ -851,6 +851,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /client-portal/{token}/ai/query:
+    post:
+      operationId: clientPortalAiQuery
+      tags: [client-portal]
+      summary: Ask the Closechain Agent a question scoped to a specific client portal project
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiQueryBody"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQueryResponse"
+        "400":
+          description: Bad request
+        "404":
+          description: Portal not found
   /ai/query:
     post:
       operationId: aiQuery
