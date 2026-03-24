@@ -126,6 +126,7 @@ router.get("/client-portal/:token/download-all", async (req, res): Promise<void>
         filePath: d.filePath!,
         fileName: d.fileName || "document",
         documentType: d.documentType,
+        parentDocumentType: d.parentDocumentType,
         packageSection: d.packageSection || "General",
         vendorName: sub.vendorName,
         csiCode: sub.csiCode,
@@ -162,10 +163,15 @@ router.get("/client-portal/:token/download-all", async (req, res): Promise<void>
       if (!result) continue;
 
       const ext = doc.fileName.includes(".") ? "" : ".pdf";
-      const subFolder = sanitize(`${doc.vendorName} (${doc.csiCode})`);
-      const sectionFolder = sanitize(doc.packageSection);
+      const docTypeFolder = sanitize(doc.parentDocumentType || doc.documentType);
+      const subDocTypeFolder = doc.parentDocumentType ? sanitize(doc.documentType) : "";
+      const vendorFolder = sanitize(doc.vendorName);
       const fileName = sanitize(doc.fileName) + ext;
-      const archivePath = `${projectFolder}/${subFolder}/${sectionFolder}/${fileName}`;
+
+      const pathParts = [projectFolder, docTypeFolder];
+      if (subDocTypeFolder) pathParts.push(subDocTypeFolder);
+      pathParts.push(vendorFolder, fileName);
+      const archivePath = pathParts.join("/");
 
       archive.append(result.data, { name: archivePath });
     } catch (err) {
