@@ -284,20 +284,33 @@ router.delete("/projects/:projectId", async (req, res): Promise<void> => {
     return;
   }
 
-  if (await isProjectLocked(params.data.projectId)) {
-    res.status(403).json({ error: "Project is approved and locked" });
-    return;
-  }
+  const projectId = params.data.projectId;
 
-  const [project] = await db
-    .delete(projectsTable)
-    .where(and(eq(projectsTable.id, params.data.projectId), eq(projectsTable.userId, req.user.id)))
-    .returning();
+  const [existing] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, req.user.id)));
 
-  if (!project) {
+  if (!existing) {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+
+  const subs = await db
+    .select({ id: subcontractorsTable.id })
+    .from(subcontractorsTable)
+    .where(eq(subcontractorsTable.projectId, projectId));
+
+  if (subs.length > 0) {
+    const { inArray } = await import("drizzle-orm");
+    const subIds = subs.map((s) => s.id);
+    await db.delete(documentSlotsTable).where(inArray(documentSlotsTable.subcontractorId, subIds));
+    await db.delete(subcontractorsTable).where(eq(subcontractorsTable.projectId, projectId));
+  }
+
+  await db
+    .delete(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, req.user.id)));
 
   res.sendStatus(204);
 });
