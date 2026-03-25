@@ -137,7 +137,7 @@ export function DocumentTypeCombobox({
             ref={listRef}
             id={listboxId}
             role="listbox"
-            className="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
+            className="absolute z-50 left-0 right-0 bottom-full mb-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
           >
             {filteredOptions.map((docType, idx) => (
               <li
