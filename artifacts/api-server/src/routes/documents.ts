@@ -14,6 +14,7 @@ import {
 import { isProjectLocked } from "../lib/projectGuards";
 import { validateUploadIntent } from "./storage";
 import { mapDocumentTypeToSection } from "../lib/closeoutSections";
+import { buildGlobalParentLookup } from "../lib/csiDivisions";
 
 const router: IRouter = Router();
 
@@ -97,12 +98,16 @@ router.post("/projects/:projectId/subcontractors/:subcontractorId/documents", as
     return;
   }
 
+  const parentLookup = await buildGlobalParentLookup();
+  const parent = parentLookup.get(parsed.data.documentType) ?? null;
+
   const [doc] = await db
     .insert(documentSlotsTable)
     .values({
       subcontractorId: params.data.subcontractorId,
       documentType: parsed.data.documentType,
-      packageSection: mapDocumentTypeToSection(parsed.data.documentType),
+      parentDocumentType: parent,
+      packageSection: mapDocumentTypeToSection(parsed.data.documentType, parent),
       status: "not_submitted",
     })
     .returning();

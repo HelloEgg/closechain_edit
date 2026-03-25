@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { type ProjectDetail, type DocumentSlotWithSubcontractor, useUpdateDocumentSlot, useAddDocumentSlot, useDeleteDocumentSlot } from "@workspace/api-client-react";
+import { type ProjectDetail, type DocumentSlotWithSubcontractor, useUpdateDocumentSlot, useAddDocumentSlot, useDeleteDocumentSlot, useListCsiDivisions } from "@workspace/api-client-react";
+import { DocumentTypeCombobox } from "@/components/DocumentTypeCombobox";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FileText, UploadCloud, CheckCircle, Clock, Plus, Download, HardHat, Trash2, FolderOpen, Users } from "lucide-react";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -120,7 +121,7 @@ export function DocumentTrackingBoard({
                   <h4 className="font-semibold text-foreground flex items-center gap-2">
                     <FileText className="w-4 h-4 text-muted-foreground" /> Required Documents
                   </h4>
-                  <AddDocDialog projectId={project.id} subcontractorId={sub.id} />
+                  <AddDocDialog projectId={project.id} subcontractorId={sub.id} existingDocTypes={subsDocs.map(d => d.documentType)} />
                 </div>
 
                 <div className="grid gap-3">
@@ -310,20 +311,26 @@ function DocumentRow({ doc, projectId, isLocked, showVendor }: { doc: DocumentSl
   );
 }
 
-function AddDocDialog({ projectId, subcontractorId }: { projectId: number, subcontractorId: number }) {
+function AddDocDialog({ projectId, subcontractorId, existingDocTypes }: { projectId: number, subcontractorId: number, existingDocTypes: string[] }) {
   const [open, setOpen] = useState(false);
   const mutation = useAddDocumentSlot();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: csiDivisions } = useListCsiDivisions();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const type = (new FormData(e.currentTarget)).get('documentType') as string;
-    
+  const allDocumentTypes = useMemo(() => {
+    const set = new Set<string>();
+    csiDivisions?.forEach((d) => {
+      d.requiredDocuments.forEach((r) => set.add(r.documentType));
+    });
+    return Array.from(set).sort();
+  }, [csiDivisions]);
+
+  const handleAdd = (docType: string) => {
     mutation.mutate({
       projectId,
       subcontractorId,
-      data: { documentType: type }
+      data: { documentType: docType }
     }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/documents`] });
@@ -332,7 +339,7 @@ function AddDocDialog({ projectId, subcontractorId }: { projectId: number, subco
         toast({ title: "Document slot added" });
       }
     });
-  }
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -344,20 +351,13 @@ function AddDocDialog({ projectId, subcontractorId }: { projectId: number, subco
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
         <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-sm translate-x-[-50%] translate-y-[-50%] bg-card p-6 rounded-2xl shadow-xl border border-border">
-          <Dialog.Title className="text-lg font-display font-bold mb-4">Add Custom Requirement</Dialog.Title>
-          <form onSubmit={handleSubmit}>
-            <input 
-              name="documentType" 
-              required 
-              placeholder="e.g., LEED Certification Form" 
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 outline-none mb-4" 
-            />
-            <div className="flex justify-end gap-2">
-              <button type="submit" disabled={mutation.isPending} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
-                Add Slot
-              </button>
-            </div>
-          </form>
+          <Dialog.Title className="text-lg font-display font-bold mb-4">Add Requirement</Dialog.Title>
+          <DocumentTypeCombobox
+            allDocumentTypes={allDocumentTypes}
+            selectedDocumentTypes={existingDocTypes}
+            onAdd={handleAdd}
+            placeholder="Search or add document type..."
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
