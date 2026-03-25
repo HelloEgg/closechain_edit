@@ -114,6 +114,19 @@ export async function getCsiDivision(csiCode: string): Promise<CsiDivisionConfig
   return divisions.find((d) => d.code === csiCode);
 }
 
+export async function buildGlobalParentLookup(): Promise<Map<string, string | null>> {
+  const divisions = await loadCsiDivisionsFromDb();
+  const lookup = new Map<string, string | null>();
+  for (const div of divisions) {
+    for (const req of div.requiredDocuments) {
+      if (!lookup.has(req.documentType)) {
+        lookup.set(req.documentType, req.parentDocumentType ?? null);
+      }
+    }
+  }
+  return lookup;
+}
+
 export function clearCsiCache(): void {
   cachedDivisions = null;
 }

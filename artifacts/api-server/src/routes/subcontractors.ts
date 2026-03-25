@@ -9,7 +9,7 @@ import {
   DeleteSubcontractorParams,
   ListSubcontractorsParams,
 } from "@workspace/api-zod";
-import { getCsiDivision } from "../lib/csiDivisions";
+import { getCsiDivision, buildGlobalParentLookup } from "../lib/csiDivisions";
 import { isProjectLocked } from "../lib/projectGuards";
 
 const router: IRouter = Router();
@@ -179,13 +179,7 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
 
   if (customDocTypes && customDocTypes.length > 0) {
     const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
-    const division = await getCsiDivision(sub.csiCode);
-    const parentLookup = new Map<string, string | null>();
-    if (division) {
-      for (const req of division.requiredDocuments) {
-        parentLookup.set(req.documentType, req.parentDocumentType ?? null);
-      }
-    }
+    const parentLookup = await buildGlobalParentLookup();
     await db.insert(documentSlotsTable).values(
       customDocTypes.map((dt) => {
         const parent = parentLookup.get(dt) ?? null;

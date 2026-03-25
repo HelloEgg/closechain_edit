@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-zod";
 import crypto from "crypto";
 import { isProjectLocked } from "../lib/projectGuards";
-import { loadCsiDivisionsFromDb, getCsiDivision } from "../lib/csiDivisions";
+import { loadCsiDivisionsFromDb, getCsiDivision, buildGlobalParentLookup } from "../lib/csiDivisions";
 
 const router: IRouter = Router();
 
@@ -113,6 +113,7 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
     }))
   );
 
+  const parentLookup = await buildGlobalParentLookup();
   let totalDocs = projectLevelDocs.length;
   for (const subData of subsData) {
     const [sub] = await db
@@ -126,12 +127,6 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
       .returning();
 
     const division = csiLookup.get(subData.csiCode);
-    const parentLookup = new Map<string, string | null>();
-    if (division) {
-      for (const req of division.requiredDocuments) {
-        parentLookup.set(req.documentType, req.parentDocumentType ?? null);
-      }
-    }
 
     const docTypeNames = subData.documentTypes.length > 0
       ? subData.documentTypes
