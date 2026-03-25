@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { DocumentTypeCombobox } from "@/components/DocumentTypeCombobox";
 
 interface ProjectInfoData {
   name: string;
@@ -321,7 +322,14 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
 
 function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, onAddCustomDoc }: StepCustomizeDocsProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
-  const [customDocInputs, setCustomDocInputs] = useState<Record<number, string>>({});
+
+  const allDocumentTypes = useMemo(() => {
+    const set = new Set<string>();
+    csiDivisions.forEach((d: CsiDivision) => {
+      d.requiredDocuments.forEach((r) => set.add(r.documentType));
+    });
+    return Array.from(set).sort();
+  }, [csiDivisions]);
 
   const getOriginalIdx = (sub: SubEntry) => allSubs.findIndex((s: SubEntry) => s === sub);
 
@@ -404,30 +412,13 @@ function StepCustomizeDocs({ subs, allSubs, setSubs, csiDivisions, onToggleDoc, 
                       <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">custom</span>
                     </label>
                   ))}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                    <input
-                      value={customDocInputs[origIdx] || ""}
-                      onChange={e => setCustomDocInputs({ ...customDocInputs, [origIdx]: e.target.value })}
-                      placeholder="Add custom document type..."
-                      className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && customDocInputs[origIdx]?.trim()) {
-                          onAddCustomDoc(origIdx, customDocInputs[origIdx].trim());
-                          setCustomDocInputs({ ...customDocInputs, [origIdx]: "" });
-                        }
-                      }}
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <DocumentTypeCombobox
+                      allDocumentTypes={allDocumentTypes}
+                      selectedDocumentTypes={sub.documentTypes}
+                      onAdd={(docType) => onAddCustomDoc(origIdx, docType)}
+                      placeholder="Add document type..."
                     />
-                    <button
-                      onClick={() => {
-                        if (customDocInputs[origIdx]?.trim()) {
-                          onAddCustomDoc(origIdx, customDocInputs[origIdx].trim());
-                          setCustomDocInputs({ ...customDocInputs, [origIdx]: "" });
-                        }
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
               )}

@@ -12,6 +12,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { FileUp, Plus, X, Search, HardHat, Trash2, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { DocumentTypeCombobox } from "@/components/DocumentTypeCombobox";
 
 export function SubcontractorList({ project }: { project: ProjectDetail }) {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -165,7 +166,14 @@ function AddSubDialog({
   const [vendorCode, setVendorCode] = useState("");
   const [csiCode, setCsiCode] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  const [customDocInput, setCustomDocInput] = useState("");
+
+  const allDocumentTypes = useMemo(() => {
+    const set = new Set<string>();
+    csiDivisions?.forEach((d) => {
+      d.requiredDocuments.forEach((r) => set.add(r.documentType));
+    });
+    return Array.from(set).sort();
+  }, [csiDivisions]);
 
   const selectedDivision = csiDivisions?.find((d) => d.code === csiCode);
 
@@ -175,7 +183,6 @@ function AddSubDialog({
     setVendorCode("");
     setCsiCode("");
     setSelectedDocs([]);
-    setCustomDocInput("");
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -196,11 +203,10 @@ function AddSubDialog({
     );
   };
 
-  const addCustomDoc = () => {
-    const trimmed = customDocInput.trim();
+  const addCustomDoc = (docType: string) => {
+    const trimmed = docType.trim();
     if (!trimmed || selectedDocs.includes(trimmed)) return;
     setSelectedDocs((prev) => [...prev, trimmed]);
-    setCustomDocInput("");
   };
 
   const handleSubmit = () => {
@@ -380,22 +386,12 @@ function AddSubDialog({
                 ))}
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  value={customDocInput}
-                  onChange={(e) => setCustomDocInput(e.target.value)}
-                  placeholder="Add a custom document type..."
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomDoc(); } }}
-                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-                />
-                <button
-                  onClick={addCustomDoc}
-                  disabled={!customDocInput.trim()}
-                  className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+              <DocumentTypeCombobox
+                allDocumentTypes={allDocumentTypes}
+                selectedDocumentTypes={selectedDocs}
+                onAdd={addCustomDoc}
+                placeholder="Add document type..."
+              />
 
               <p className="text-xs text-muted-foreground">{selectedDocs.length} document{selectedDocs.length !== 1 ? "s" : ""} selected</p>
 
