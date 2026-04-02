@@ -29,8 +29,8 @@ interface StepSelectSubsProps {
   onUpdateVendor: (idx: number, field: string, value: string) => void;
   showCustomForm: boolean;
   setShowCustomForm: (v: boolean) => void;
-  customSubForm: { vendorName: string; vendorCode: string; csiCode: string };
-  setCustomSubForm: (v: { vendorName: string; vendorCode: string; csiCode: string }) => void;
+  customSubForm: { vendorName: string; vendorCode: string };
+  setCustomSubForm: (v: { vendorName: string; vendorCode: string }) => void;
   onAddCustom: () => void;
   onRemoveCustom: (idx: number) => void;
 }
@@ -62,7 +62,7 @@ export default function ProjectWizard() {
   });
 
   const [subs, setSubs] = useState<SubEntry[]>([]);
-  const [customSubForm, setCustomSubForm] = useState({ vendorName: "", vendorCode: "", csiCode: "" });
+  const [customSubForm, setCustomSubForm] = useState({ vendorName: "", vendorCode: "" });
   const [showCustomForm, setShowCustomForm] = useState(false);
 
   const initSubsFromCSI = () => {
@@ -115,16 +115,15 @@ export default function ProjectWizard() {
   };
 
   const addCustomSub = () => {
-    if (!customSubForm.vendorName || !customSubForm.csiCode) return;
-    const division = csiDivisions?.find(d => d.code === customSubForm.csiCode);
+    if (!customSubForm.vendorName) return;
     setSubs(prev => [...prev, {
       ...customSubForm,
-      csiCode: customSubForm.csiCode,
-      csiDivision: division?.name || "Custom",
-      documentTypes: division?.requiredDocuments ? division.requiredDocuments.map((r) => r.documentType) : [],
+      csiCode: "",
+      csiDivision: "Custom",
+      documentTypes: [],
       selected: true,
     }]);
-    setCustomSubForm({ vendorName: "", vendorCode: "", csiCode: "" });
+    setCustomSubForm({ vendorName: "", vendorCode: "" });
     setShowCustomForm(false);
   };
 
@@ -303,7 +302,7 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
               <label className="flex items-center gap-3 cursor-pointer flex-1">
                 <input type="checkbox" checked={sub.selected} onChange={() => onToggle(idx)} className="w-5 h-5 rounded border-border text-primary focus:ring-primary" />
                 <div>
-                  <span className="font-semibold text-foreground">{sub.csiCode} — {sub.csiDivision}</span>
+                  <span className="font-semibold text-foreground">{sub.csiCode ? `${sub.csiCode} — ` : ""}{sub.csiDivision}</span>
                   <span className="text-xs text-muted-foreground ml-2">({sub.documentTypes.length} docs)</span>
                 </div>
               </label>
@@ -327,10 +326,9 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
         {showCustomForm ? (
           <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
             <h4 className="font-semibold text-sm">Add Custom Subcontractor</h4>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <input value={customSubForm.vendorName} onChange={e => setCustomSubForm({ ...customSubForm, vendorName: e.target.value })} placeholder="Vendor Name" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
               <input value={customSubForm.vendorCode} onChange={e => setCustomSubForm({ ...customSubForm, vendorCode: e.target.value })} placeholder="Vendor Code" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
-              <input value={customSubForm.csiCode} onChange={e => setCustomSubForm({ ...customSubForm, csiCode: e.target.value })} placeholder="CSI Code (e.g. 260000)" className="px-3 py-2 rounded-lg border border-border bg-background text-sm" />
             </div>
             <div className="flex gap-2">
               <button onClick={onAddCustom} className="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-medium">Add</button>
