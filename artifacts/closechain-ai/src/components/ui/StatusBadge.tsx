@@ -11,7 +11,7 @@ const badgeVariants = cva(
         not_submitted: "bg-gray-100 text-gray-700 border border-gray-200",
         uploaded: "bg-amber-50 text-amber-700 border border-amber-200",
         approved: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-        active: "bg-blue-50 text-blue-700 border border-blue-200",
+        active: "bg-amber-50 text-amber-700 border border-amber-200",
         archived: "bg-gray-100 text-gray-600 border border-gray-200",
       },
     },
@@ -32,7 +32,7 @@ const statusLabels: Record<string, string> = {
   not_submitted: "Not Submitted",
   uploaded: "Pending Review",
   approved: "Published",
-  active: "Active",
+  active: "Not Published",
   archived: "Archived",
 };
 
@@ -50,7 +50,7 @@ export function StatusBadge({
       {showIcon && status === "not_submitted" && <AlertCircle className="w-3.5 h-3.5" />}
       {showIcon && status === "uploaded" && <Clock className="w-3.5 h-3.5" />}
       {showIcon && status === "approved" && <Globe className="w-3.5 h-3.5" />}
-      {showIcon && status === "active" && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+      {showIcon && status === "active" && <Clock className="w-3.5 h-3.5" />}
       {displayLabel}
     </div>
   );
