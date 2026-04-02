@@ -217,7 +217,7 @@ router.get("/projects/:projectId", async (req, res): Promise<void> => {
       const division = await getCsiDivision(sub.csiCode);
       return {
         ...sub,
-        csiDivision: division?.name || "Unknown",
+        csiDivision: division?.name || sub.csiCode || "Unknown",
         totalDocuments: stats.total,
         uploadedDocuments: Number(stats.uploaded),
         approvedDocuments: Number(stats.approved),

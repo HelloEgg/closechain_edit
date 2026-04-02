@@ -62,7 +62,7 @@ router.get("/client-portal/:token", async (req, res): Promise<void> => {
       return {
         vendorName: sub.vendorName,
         csiCode: sub.csiCode,
-        csiDivision: division?.name || "Unknown",
+        csiDivision: division?.name || sub.csiCode || "Unknown",
         progress: subTotal > 0 ? Math.round((subUploaded / subTotal) * 100) : 0,
         documents: docs.map((d) => ({
           documentType: d.documentType,

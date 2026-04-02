@@ -47,7 +47,7 @@ async function getSubWithProgress(sub: typeof subcontractorsTable.$inferSelect) 
 
   return {
     ...sub,
-    csiDivision: division?.name || "Unknown",
+    csiDivision: division?.name || sub.csiCode || "Unknown",
     totalDocuments: stats.total,
     uploadedDocuments: Number(stats.uploaded),
     approvedDocuments: Number(stats.approved),
@@ -88,7 +88,7 @@ router.get("/subcontractors", async (req, res): Promise<void> => {
     const division = await getCsiDivision(sub.csiCode);
     return {
       ...sub,
-      csiDivision: division?.name || "Unknown",
+      csiDivision: division?.name || sub.csiCode || "Unknown",
       totalDocuments: stats.total,
       uploadedDocuments: Number(stats.uploaded),
       approvedDocuments: Number(stats.approved),

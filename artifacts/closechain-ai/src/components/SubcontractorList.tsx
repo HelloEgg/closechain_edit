@@ -102,7 +102,9 @@ export function SubcontractorList({ project }: { project: ProjectDetail }) {
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
                       {sub.csiDivision}
                     </span>
-                    <p className="text-xs text-muted-foreground mt-1">CSI: {sub.csiCode}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {sub.csiDivision !== sub.csiCode ? `CSI: ${sub.csiCode}` : "Custom"}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-medium">{sub.approvedDocuments} / {sub.totalDocuments} Approved</p>
@@ -333,10 +335,10 @@ function AddSubDialog({
                       onChange={() => { setTradeMode("custom"); setCsiCode(""); }}
                       className="w-4 h-4 text-primary focus:ring-primary"
                     />
-                    Custom Vendor Type
+                    Custom
                   </label>
                 </div>
-                {tradeMode === "csi" ? (
+                {tradeMode === "csi" && (
                   <select
                     value={csiCode}
                     onChange={(e) => setCsiCode(e.target.value)}
@@ -349,15 +351,19 @@ function AddSubDialog({
                       </option>
                     ))}
                   </select>
-                ) : (
+                )}
+              </div>
+              {tradeMode === "custom" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Vendor Type <span className="text-destructive">*</span></label>
                   <input
                     value={customTradeType}
                     onChange={(e) => setCustomTradeType(e.target.value)}
                     placeholder="e.g., General Labor, Specialty Vendor..."
                     className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 outline-none"
                   />
-                )}
-              </div>
+                </div>
+              )}
               {tradeMode === "csi" && selectedDivision && (
                 <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
                   {selectedDivision.requiredDocuments.length} documents auto-assigned for this trade. You can customize them in the next step.
