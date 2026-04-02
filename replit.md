@@ -86,6 +86,7 @@ All routes mounted at `/api`:
 - `GET /projects/:projectId/documents` — List all project documents (filterable)
 - `GET /csi/divisions` — List all CSI divisions with required documents
 - `GET /closeout-sections` — List all 9 closeout package sections
+- `GET /projects/:projectId/download` — Download project folder as ZIP with tracking log (authed, ownership-scoped)
 - `GET /client-portal/:token` — Public client portal data
 - `GET /client-portal/:token/download-all` — Download all project documents as ZIP with folder structure (public, token-scoped)
 - `GET /client-portal/:token/download/*path` — Public file download (token-scoped)

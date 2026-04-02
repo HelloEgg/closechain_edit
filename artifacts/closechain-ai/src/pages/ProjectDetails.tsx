@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Building2, Globe, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download, CheckCircle2 } from "lucide-react";
+import { Building2, Globe, ExternalLink, FileText, HardHat, Calendar, Hash, Trash2, UploadCloud, Download, CheckCircle2, FolderDown } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ export default function ProjectDetails() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useGetProject(projectId);
   const { data: allDocs, isLoading: docsLoading } = useListAllProjectDocuments(projectId);
@@ -44,6 +45,30 @@ export default function ProjectDetails() {
           toast({ title: "Project unpublished", description: "The project is now active. You can republish at any time." });
         }
       });
+    }
+  };
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const response = await fetch(`${base}/api/projects/${projectId}/download`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${project?.name || "project"}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      toast({ title: "Download failed", variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -149,6 +174,15 @@ export default function ProjectDetails() {
                   </button>
                 </div>
               )}
+
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                title="Download project folder"
+                className="ml-2 p-3 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors border border-border"
+              >
+                {isDownloading ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <FolderDown className="w-5 h-5" />}
+              </button>
 
               <button
                 onClick={handleDelete}

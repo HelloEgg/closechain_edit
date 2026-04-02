@@ -8,6 +8,7 @@ import documentsRouter from "./documents";
 import csiRouter from "./csi";
 import clientPortalRouter from "./clientPortal";
 import aiRouter from "./ai";
+import downloadRouter from "./download";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(documentsRouter);
 router.use(csiRouter);
 router.use(clientPortalRouter);
 router.use(aiRouter);
+router.use(downloadRouter);
 
 export default router;
