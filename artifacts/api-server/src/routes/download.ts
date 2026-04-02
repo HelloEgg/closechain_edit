@@ -4,6 +4,7 @@ import XLSX from "xlsx-js-style";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { getCsiDivision } from "../lib/csiDivisions";
 
 const router = Router();
 const storageService = new ObjectStorageService();
@@ -46,6 +47,7 @@ interface VendorEntry {
   status: string;
   filePath: string | null;
   fileName: string | null;
+  subDocType?: string;
 }
 
 interface SubTypeGroup {
@@ -74,6 +76,7 @@ function buildHierarchy(rows: DocRow[]): Record<string, DocTypeGroup> {
       status: row.status,
       filePath: row.filePath,
       fileName: row.fileName,
+      subDocType: isSubItem ? row.documentType : undefined,
     };
 
     if (isSubItem) {
@@ -89,12 +92,12 @@ function buildHierarchy(rows: DocRow[]): Record<string, DocTypeGroup> {
   return groups;
 }
 
-function buildTrackingLog(
+async function buildTrackingLog(
   projectName: string,
   projectNumber: string | null,
   endDate: string | null,
   hierarchy: Record<string, DocTypeGroup>
-): Buffer {
+): Promise<Buffer> {
   const wb = XLSX.utils.book_new();
   const rows: any[][] = [];
 
@@ -138,6 +141,19 @@ function buildTrackingLog(
     (a, b) => docTypeSortKey(a) - docTypeSortKey(b)
   );
 
+  const allCsiCodes = new Set<string>();
+  for (const group of Object.values(hierarchy)) {
+    for (const v of group.directVendors) allCsiCodes.add(v.csiCode);
+    for (const st of Object.values(group.subTypes)) {
+      for (const v of st.vendors) allCsiCodes.add(v.csiCode);
+    }
+  }
+  const vendorTypeCache = new Map<string, string>();
+  for (const code of allCsiCodes) {
+    const division = await getCsiDivision(code);
+    vendorTypeCache.set(code, division ? division.name : code);
+  }
+
   let sectionNum = 1;
   for (const docType of sortedDocTypes) {
     const group = hierarchy[docType];
@@ -154,21 +170,46 @@ function buildTrackingLog(
       allVendors.push(...group.subTypes[subType].vendors);
     }
 
-    const uniqueVendors = new Map<string, VendorEntry>();
-    for (const v of allVendors) {
-      if (v.vendorName !== "__PROJECT_LEVEL__" && !uniqueVendors.has(v.vendorName)) {
-        uniqueVendors.set(v.vendorName, v);
+    const isTestingSection = docType === "Testing/Demonstration";
+
+    if (isTestingSection) {
+      const displayEntries: { label: string; status: string }[] = [];
+      for (const v of allVendors) {
+        if (v.vendorName === "__PROJECT_LEVEL__") continue;
+        const subDocLabel = v.subDocType || docType;
+        const label = `"${subDocLabel}" ${v.vendorName}`;
+        if (!displayEntries.some((e) => e.label === label)) {
+          displayEntries.push({ label, status: v.status });
+        }
       }
-    }
 
-    if (uniqueVendors.size === 0) {
-      rows.push([{ v: "  (Project Level)", s: { font: normalFont } }]);
+      if (displayEntries.length === 0) {
+        rows.push([{ v: "  (Project Level)", s: { font: normalFont } }]);
+      } else {
+        for (const entry of displayEntries) {
+          let font = redFont;
+          if (entry.status === "approved") font = blackFont;
+          rows.push([{ v: `  ${entry.label}`, s: { font } }]);
+        }
+      }
     } else {
-      for (const [name, vendor] of uniqueVendors) {
-        let font = redFont;
-        if (vendor.status === "approved") font = blackFont;
+      const uniqueVendors = new Map<string, VendorEntry>();
+      for (const v of allVendors) {
+        const dedupeKey = `${v.vendorName}::${v.csiCode}`;
+        if (v.vendorName !== "__PROJECT_LEVEL__" && !uniqueVendors.has(dedupeKey)) {
+          uniqueVendors.set(dedupeKey, v);
+        }
+      }
 
-        rows.push([{ v: `  ${name}`, s: { font } }]);
+      if (uniqueVendors.size === 0) {
+        rows.push([{ v: "  (Project Level)", s: { font: normalFont } }]);
+      } else {
+        for (const [, vendor] of uniqueVendors) {
+          let font = redFont;
+          if (vendor.status === "approved") font = blackFont;
+          const vendorType = vendorTypeCache.get(vendor.csiCode) ?? vendor.csiCode;
+          rows.push([{ v: `  (${vendorType}) ${vendor.vendorName}`, s: { font } }]);
+        }
       }
     }
 
@@ -244,7 +285,7 @@ router.get("/projects/:projectId/download", async (req, res) => {
     });
     archive.pipe(res);
 
-    const xlsxBuffer = buildTrackingLog(
+    const xlsxBuffer = await buildTrackingLog(
       project.name,
       project.jobNumber,
       project.endDate,
