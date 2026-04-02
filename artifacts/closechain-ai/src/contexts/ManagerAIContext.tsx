@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAiQuery, type AiQueryBodyConversationHistoryItem } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -18,6 +19,7 @@ const ManagerAIContext = createContext<ManagerAIContextValue | null>(null);
 export function ManagerAIProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mutation = useAiQuery();
+  const queryClient = useQueryClient();
 
   const sendMessage = useCallback(async (question: string) => {
     if (!question.trim() || mutation.isPending) return;
@@ -36,6 +38,9 @@ export function ManagerAIProvider({ children }: { children: React.ReactNode }) {
       });
       const assistantMsg: ChatMessage = { role: "assistant", content: result.content };
       setMessages((prev) => [...prev, assistantMsg]);
+      if ((result as any).action === "project_created") {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      }
     } catch {
       const errorMsg: ChatMessage = {
         role: "assistant",

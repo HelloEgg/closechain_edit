@@ -66,6 +66,7 @@ artifacts-monorepo/
 - **GC Approval Flow**: Approve a project to generate a client portal token/link. Approved projects are mutation-locked.
 - **Client Portal**: Public read-only view of approved closeout packages at `/client-portal/:token` with dual sorting (By Subcontractor / By Document Type) and embedded Closechain Agent AI chat
 - **Client Portal Closechain Agent**: AI chatbot scoped to only the specific project of each client portal. Uses the portal token to load project data and answers questions only about that project's subcontractors, documents, and progress.
+- **Manager AI Project Creation**: The Manager AI can create projects via voice or chat using OpenAI function calling. It maps trade aliases (e.g., "electrician" → Electric, "HVAC" → HVAC) to CSI codes and auto-assigns documents. Custom trade types are supported for unknown trades. Dashboard auto-refreshes after AI-created projects.
 - **Approval Locking**: All mutation endpoints (create/update/delete subcontractors, documents, project updates) reject changes when project.status === 'approved'
 
 ## API Routes
