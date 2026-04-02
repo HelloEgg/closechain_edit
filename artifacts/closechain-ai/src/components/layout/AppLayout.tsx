@@ -11,7 +11,10 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  Mic,
+  MicOff,
 } from "lucide-react";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 import { cn } from "@/lib/utils";
 import logoFull from "@assets/ChatGPT Image Mar 17, 2026, 04_47_49 PM.png";
 import logoIcon from "@assets/ChatGPT_Image_Mar_3,_2026,_09_59_01_AM_1773689296536.png";
@@ -22,6 +25,9 @@ function ManagerAIPanel() {
   const [input, setInput] = React.useState("");
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const { isListening, isSupported, toggleListening } = useVoiceInput({
+    onTranscript: (text) => setInput(text),
+  });
 
   React.useEffect(() => {
     if (isOpen) {
@@ -107,11 +113,27 @@ function ManagerAIPanel() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about your projects..."
+                placeholder={isListening ? "Listening..." : "Ask about your projects..."}
                 rows={2}
                 disabled={isLoading}
-                className="flex-1 px-2.5 py-2 text-xs rounded-lg border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+                className={cn(
+                  "flex-1 px-2.5 py-2 text-xs rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 transition-colors",
+                  isListening ? "border-red-500" : "border-border"
+                )}
               />
+              {isSupported && (
+                <button
+                  onClick={toggleListening}
+                  className={cn(
+                    "p-2 rounded-lg transition-colors flex-shrink-0",
+                    isListening
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                </button>
+              )}
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}

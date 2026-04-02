@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useClientPortalAiQuery, type AiQueryBodyConversationHistoryItem } from "@workspace/api-client-react";
-import { Bot, Send, RotateCcw } from "lucide-react";
+import { Bot, Send, RotateCcw, Mic, MicOff } from "lucide-react";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -14,6 +15,9 @@ export function PortalAgent({ token }: { token: string }) {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mutation = useClientPortalAiQuery();
+  const { isListening, isSupported, toggleListening } = useVoiceInput({
+    onTranscript: (text) => setInput(text),
+  });
 
   useEffect(() => {
     const container = chatContainerRef.current;
@@ -82,10 +86,26 @@ export function PortalAgent({ token }: { token: string }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Chat With Your Space - Closechain Agent"
+              placeholder={isListening ? "Listening..." : "Chat With Your Space - Closechain Agent"}
               disabled={mutation.isPending}
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 placeholder:text-muted-foreground/70"
+              className={cn(
+                "w-full px-4 py-2.5 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 placeholder:text-muted-foreground/70 transition-colors",
+                isListening ? "border-red-500" : "border-border"
+              )}
             />
+            {isSupported && (
+              <button
+                onClick={toggleListening}
+                className={cn(
+                  "p-2.5 rounded-xl transition-colors flex-shrink-0",
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                )}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
             <button
               onClick={handleSend}
               disabled={!input.trim() || mutation.isPending}
