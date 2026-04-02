@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Check, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, X, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { DocumentTypeCombobox } from "@/components/DocumentTypeCombobox";
 
 interface ProjectInfoData {
@@ -259,6 +259,20 @@ function StepProjectInfo({ info, onChange }: { info: ProjectInfoData, onChange: 
 }
 
 function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setShowCustomForm, customSubForm, setCustomSubForm, onAddCustom, onRemoveCustom }: StepSelectSubsProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSubs = useMemo(() => {
+    if (!searchQuery.trim()) return subs.map((sub, idx) => ({ sub, idx }));
+    const q = searchQuery.toLowerCase();
+    return subs
+      .map((sub, idx) => ({ sub, idx }))
+      .filter(({ sub }) =>
+        sub.csiDivision.toLowerCase().includes(q) ||
+        sub.csiCode.toLowerCase().includes(q) ||
+        sub.vendorName.toLowerCase().includes(q)
+      );
+  }, [subs, searchQuery]);
+
   return (
     <div className="space-y-5">
       <div className="flex justify-between items-start">
@@ -269,8 +283,18 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
         <span className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">{subs.filter((s: SubEntry) => s.selected).length} selected</span>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search by trade name or CSI code..."
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+      </div>
+
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
-        {subs.map((sub: SubEntry, idx: number) => (
+        {filteredSubs.map(({ sub, idx }) => (
           <div key={idx} className={`rounded-xl border transition-all ${sub.selected ? "border-primary/30 bg-primary/5" : "border-border hover:border-border/80"}`}>
             <div className="flex items-center gap-4 p-4">
               <label className="flex items-center gap-3 cursor-pointer flex-1">
