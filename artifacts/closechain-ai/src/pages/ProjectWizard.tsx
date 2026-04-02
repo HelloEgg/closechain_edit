@@ -262,15 +262,18 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredSubs = useMemo(() => {
-    if (!searchQuery.trim()) return subs.map((sub, idx) => ({ sub, idx }));
-    const q = searchQuery.toLowerCase();
-    return subs
-      .map((sub, idx) => ({ sub, idx }))
-      .filter(({ sub }) =>
+    let items = subs.map((sub, idx) => ({ sub, idx }));
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(({ sub }) =>
         sub.csiDivision.toLowerCase().includes(q) ||
         sub.csiCode.toLowerCase().includes(q) ||
         sub.vendorName.toLowerCase().includes(q)
       );
+    }
+    const selected = items.filter(({ sub }) => sub.selected);
+    const unselected = items.filter(({ sub }) => !sub.selected);
+    return [...selected, ...unselected];
   }, [subs, searchQuery]);
 
   return (
