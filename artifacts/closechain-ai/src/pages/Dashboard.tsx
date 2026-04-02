@@ -14,8 +14,8 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   const totalProjects = projects?.length || 0;
-  const notPublishedProjects = projects?.filter(p => !p.clientPortalToken).length || 0;
-  const publishedProjects = projects?.filter(p => !!p.clientPortalToken).length || 0;
+  const publishedProjects = projects?.filter(p => p.status === "approved").length || 0;
+  const notPublishedProjects = totalProjects - publishedProjects;
 
   return (
     <AppLayout>
