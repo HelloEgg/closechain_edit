@@ -1212,7 +1212,7 @@ components:
           type: number
     CreateSubcontractorBody:
       type: object
-      required: [vendorName, vendorCode, csiCode]
+      required: [vendorName, vendorCode]
       properties:
         vendorName:
           type: string
@@ -1222,7 +1222,8 @@ components:
           minLength: 1
         csiCode:
           type: string
-          minLength: 1
+        customTradeType:
+          type: string
         documentTypes:
           type: array
           items:

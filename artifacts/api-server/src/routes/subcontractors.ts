@@ -164,17 +164,35 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
     return;
   }
 
-  const division = await getCsiDivision(parsed.data.csiCode);
-  if (!division) {
-    res.status(400).json({ error: `Invalid CSI code: ${parsed.data.csiCode}. No matching trade found.` });
+  const { documentTypes: customDocTypes, customTradeType, ...subFields } = parsed.data;
+
+  const hasCsiCode = !!subFields.csiCode;
+  const hasCustomTrade = !!customTradeType;
+
+  if (!hasCsiCode && !hasCustomTrade) {
+    res.status(400).json({ error: "Either csiCode or customTradeType must be provided." });
     return;
   }
 
-  const { documentTypes: customDocTypes, ...subFields } = parsed.data;
+  let division = null;
+  if (hasCsiCode) {
+    division = await getCsiDivision(subFields.csiCode!);
+    if (!division) {
+      res.status(400).json({ error: `Invalid CSI code: ${subFields.csiCode}. No matching trade found.` });
+      return;
+    }
+  }
+
+  const insertData = {
+    vendorName: subFields.vendorName,
+    vendorCode: subFields.vendorCode,
+    csiCode: subFields.csiCode || customTradeType!,
+    projectId: params.data.projectId,
+  };
 
   const [sub] = await db
     .insert(subcontractorsTable)
-    .values({ ...subFields, projectId: params.data.projectId })
+    .values(insertData)
     .returning();
 
   if (customDocTypes && customDocTypes.length > 0) {
@@ -192,7 +210,7 @@ router.post("/projects/:projectId/subcontractors", async (req, res): Promise<voi
         };
       })
     );
-  } else {
+  } else if (division) {
     await autoAssignDocuments(sub.id, sub.csiCode);
   }
 

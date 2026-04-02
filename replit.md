@@ -55,7 +55,9 @@ artifacts-monorepo/
 - **Multi-Step Project Wizard**: 4-step creation flow — project info → select CSI divisions/subs → customize required docs per sub → review & create
 - **Dashboard Dual Views**: Project View (card grid) and Subcontractor View (aggregated cross-project table)
 - **Project Detail Dual Views**: Document Type View (grouped by doc type with drill-down) and Subcontractor View (grouped by sub with drill-down)
-- **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division
+- **CSI Division Auto-Assignment**: When adding a subcontractor with a CSI code (02-16), the system automatically creates required document slots based on the trade division. Custom vendor types (without CSI code) are also supported — no auto-assignment occurs for custom types.
+- **Voice Input**: Both the Manager AI sidebar chat and Client Portal Agent support speech-to-text via the Web Speech API
+- **Project Download**: Download a project's full folder structure as a ZIP file with an XLSX tracking log
 - **9 Closeout Package Sections**: Permits, Inspection/Sign Off, As-Builts, Balancing Report, Testing/Demonstration, Equipment O&Ms, Project Submittals, Warranty, Architectural Maintenance Instructions
 - **Hierarchical Document Types**: Document Type Plus items (sub-requirements under a Document Type) are stored with `parentDocumentType` and grouped visually in Document Type views. E.g., HVAC's "Equipment Start Up Reports" appears under "Testing/Demonstration". This is data-driven from the DB — no hardcoded trade logic in UI.
 - **Document Section View**: Toggle between "By Subcontractor" and "By Section" views on the document tracking board

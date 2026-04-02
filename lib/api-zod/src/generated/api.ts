@@ -433,7 +433,8 @@ export const CreateSubcontractorHeader = zod.object({
 export const CreateSubcontractorBody = zod.object({
   vendorName: zod.string().min(1),
   vendorCode: zod.string().min(1),
-  csiCode: zod.string().min(1),
+  csiCode: zod.string().optional(),
+  customTradeType: zod.string().optional(),
   documentTypes: zod
     .array(zod.string())
     .optional()
@@ -461,7 +462,8 @@ export const ImportSubcontractorsBody = zod.object({
     zod.object({
       vendorName: zod.string().min(1),
       vendorCode: zod.string().min(1),
-      csiCode: zod.string().min(1),
+      csiCode: zod.string().optional(),
+      customTradeType: zod.string().optional(),
       documentTypes: zod
         .array(zod.string())
         .optional()

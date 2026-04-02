@@ -166,6 +166,8 @@ function AddSubDialog({
   const [vendorCode, setVendorCode] = useState("");
   const [csiCode, setCsiCode] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [tradeMode, setTradeMode] = useState<"csi" | "custom">("csi");
+  const [customTradeType, setCustomTradeType] = useState("");
 
   const allDocumentTypes = useMemo(() => {
     const set = new Set<string>();
@@ -183,6 +185,8 @@ function AddSubDialog({
     setVendorCode("");
     setCsiCode("");
     setSelectedDocs([]);
+    setTradeMode("csi");
+    setCustomTradeType("");
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -191,9 +195,15 @@ function AddSubDialog({
   };
 
   const goToStep2 = () => {
-    if (!vendorName.trim() || !csiCode) return;
-    const defaultDocs = selectedDivision?.requiredDocuments.map((r) => r.documentType) || [];
-    setSelectedDocs([...defaultDocs]);
+    if (!vendorName.trim()) return;
+    if (tradeMode === "csi" && !csiCode) return;
+    if (tradeMode === "custom" && !customTradeType.trim()) return;
+    if (tradeMode === "csi") {
+      const defaultDocs = selectedDivision?.requiredDocuments.map((r) => r.documentType) || [];
+      setSelectedDocs([...defaultDocs]);
+    } else {
+      setSelectedDocs([]);
+    }
     setStep(2);
   };
 
@@ -210,16 +220,25 @@ function AddSubDialog({
   };
 
   const handleSubmit = () => {
-    if (!vendorName.trim() || !csiCode) return;
+    if (!vendorName.trim()) return;
+    if (tradeMode === "csi" && !csiCode) return;
+    if (tradeMode === "custom" && !customTradeType.trim()) return;
+
+    const data: any = {
+      vendorName: vendorName.trim(),
+      vendorCode: vendorCode.trim() || vendorName.trim().slice(0, 6).toUpperCase(),
+      documentTypes: selectedDocs,
+    };
+    if (tradeMode === "csi") {
+      data.csiCode = csiCode;
+    } else {
+      data.customTradeType = customTradeType.trim();
+    }
+
     mutation.mutate(
       {
         projectId,
-        data: {
-          vendorName: vendorName.trim(),
-          vendorCode: vendorCode.trim() || vendorName.trim().slice(0, 6).toUpperCase(),
-          csiCode,
-          documentTypes: selectedDocs,
-        },
+        data,
       },
       {
         onSuccess: () => {
@@ -294,23 +313,59 @@ function AddSubDialog({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5">Trade / CSI Division <span className="text-destructive">*</span></label>
-                <select
-                  value={csiCode}
-                  onChange={(e) => setCsiCode(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 outline-none"
-                >
-                  <option value="">Select a trade...</option>
-                  {csiDivisions?.map((div) => (
-                    <option key={div.code} value={div.code}>
-                      {div.code} — {div.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium mb-2">Trade Type <span className="text-destructive">*</span></label>
+                <div className="flex gap-4 mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="radio"
+                      name="tradeMode"
+                      checked={tradeMode === "csi"}
+                      onChange={() => { setTradeMode("csi"); setCustomTradeType(""); }}
+                      className="w-4 h-4 text-primary focus:ring-primary"
+                    />
+                    Select CSI Trade
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="radio"
+                      name="tradeMode"
+                      checked={tradeMode === "custom"}
+                      onChange={() => { setTradeMode("custom"); setCsiCode(""); }}
+                      className="w-4 h-4 text-primary focus:ring-primary"
+                    />
+                    Custom Vendor Type
+                  </label>
+                </div>
+                {tradeMode === "csi" ? (
+                  <select
+                    value={csiCode}
+                    onChange={(e) => setCsiCode(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 outline-none"
+                  >
+                    <option value="">Select a trade...</option>
+                    {csiDivisions?.map((div) => (
+                      <option key={div.code} value={div.code}>
+                        {div.code} — {div.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={customTradeType}
+                    onChange={(e) => setCustomTradeType(e.target.value)}
+                    placeholder="e.g., General Labor, Specialty Vendor..."
+                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/50 outline-none"
+                  />
+                )}
               </div>
-              {selectedDivision && (
+              {tradeMode === "csi" && selectedDivision && (
                 <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
                   {selectedDivision.requiredDocuments.length} documents auto-assigned for this trade. You can customize them in the next step.
+                </p>
+              )}
+              {tradeMode === "custom" && customTradeType.trim() && (
+                <p className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  No documents will be auto-assigned for custom vendor types. You can add documents manually in the next step.
                 </p>
               )}
               <div className="flex justify-end gap-3 pt-2">
@@ -319,7 +374,7 @@ function AddSubDialog({
                 </Dialog.Close>
                 <button
                   onClick={goToStep2}
-                  disabled={!vendorName.trim() || !csiCode}
+                  disabled={!vendorName.trim() || (tradeMode === "csi" ? !csiCode : !customTradeType.trim())}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-all"
                 >
                   Next <ArrowRight className="w-4 h-4" />
@@ -332,9 +387,13 @@ function AddSubDialog({
             <div className="p-6 flex flex-col gap-4">
               <div>
                 <p className="text-sm font-semibold text-foreground mb-1">
-                  {selectedDivision?.name} — Documents
+                  {tradeMode === "csi" ? selectedDivision?.name : customTradeType} — Documents
                 </p>
-                <p className="text-xs text-muted-foreground">Check the documents required for {vendorName}. Uncheck any that don't apply.</p>
+                <p className="text-xs text-muted-foreground">
+                  {tradeMode === "csi"
+                    ? `Check the documents required for ${vendorName}. Uncheck any that don't apply.`
+                    : `Add documents manually for ${vendorName}. Use the field below to search and add document types.`}
+                </p>
               </div>
 
               <div className="max-h-72 overflow-y-auto space-y-1 rounded-xl border border-border bg-background p-3">
@@ -404,7 +463,7 @@ function AddSubDialog({
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={mutation.isPending || selectedDocs.length === 0}
+                  disabled={mutation.isPending || (tradeMode === "csi" && selectedDocs.length === 0)}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-all"
                 >
                   {mutation.isPending ? (

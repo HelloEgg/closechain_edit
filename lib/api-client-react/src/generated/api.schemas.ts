@@ -217,8 +217,8 @@ export interface CreateSubcontractorBody {
   vendorName: string;
   /** @minLength 1 */
   vendorCode: string;
-  /** @minLength 1 */
-  csiCode: string;
+  csiCode?: string;
+  customTradeType?: string;
   /** Optional override for auto-assigned document types from CSI code */
   documentTypes?: string[];
 }
