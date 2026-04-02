@@ -99,12 +99,21 @@ export function SubcontractorList({ project }: { project: ProjectDetail }) {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
-                      {sub.csiDivision}
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {sub.csiDivision !== sub.csiCode ? `CSI: ${sub.csiCode}` : "Custom"}
-                    </p>
+                    {sub.csiDivision !== sub.csiCode ? (
+                      <>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
+                          {sub.csiDivision}
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-1">CSI: {sub.csiCode}</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                          {sub.csiDivision}
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-1">Custom Type</p>
+                      </>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-medium">{sub.approvedDocuments} / {sub.totalDocuments} Approved</p>

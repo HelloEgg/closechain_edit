@@ -74,9 +74,9 @@ router.post("/projects/setup", async (req, res): Promise<void> => {
 
   const divisions = await loadCsiDivisionsFromDb();
   const csiLookup = new Map(divisions.map(d => [d.code, d]));
+  const isCsiCode = (code: string) => /^\d{2,6}$/.test(code);
   for (const subData of subsData) {
-    const division = csiLookup.get(subData.csiCode);
-    if (!division) {
+    if (isCsiCode(subData.csiCode) && !csiLookup.get(subData.csiCode)) {
       res.status(400).json({ error: `Invalid CSI code: ${subData.csiCode}` });
       return;
     }

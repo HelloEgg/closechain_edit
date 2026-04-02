@@ -8,7 +8,7 @@ export const subcontractorsTable = pgTable("subcontractors", {
   projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
   vendorCode: varchar("vendor_code", { length: 100 }).notNull(),
-  csiCode: varchar("csi_code", { length: 10 }).notNull(),
+  csiCode: varchar("csi_code", { length: 255 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
