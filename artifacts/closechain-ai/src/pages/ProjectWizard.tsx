@@ -307,7 +307,10 @@ function StepSelectSubs({ subs, onToggle, onUpdateVendor, showCustomForm, setSho
                   {/^\d{2,6}$/.test(sub.csiCode) ? (
                     <span className="font-semibold text-foreground">{sub.csiCode} — {sub.csiDivision}</span>
                   ) : (
-                    <span className="font-semibold text-foreground">{sub.csiDivision}</span>
+                    <span className="font-semibold text-foreground">
+                      {sub.vendorName}
+                      {sub.csiDivision && <span className="text-xs font-normal text-muted-foreground ml-2">({sub.csiDivision})</span>}
+                    </span>
                   )}
                   <span className="text-xs text-muted-foreground ml-2">({sub.documentTypes.length} docs)</span>
                 </div>
