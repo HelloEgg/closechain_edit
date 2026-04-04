@@ -1,0 +1,48 @@
+PROMPT 2 — Professional Excel tracking log redesign
+
+Redesign the Excel tracking log inside the ZIP download (download.ts) with a professional corporate look. Here are the exact specifications:
+
+Colors (hex constants):
+
+NAVY: "1F3864" — used for header rows and End row
+STEEL: "4472C4" — used for section header bottom borders and vendor left accent
+LIGHT_BLUE: "D6E4F0" — used for section header row backgrounds
+LIGHT_GRAY: "F2F2F2" — used for the "Index" row background
+MED_GRAY: "BFBFBF" — used for Color Key legend borders
+DARK_CHAR: "333333" — used for section header text color
+Critical: solidFill helper function. xlsx-js-style requires patternType: "solid" in all fill definitions or fills silently fail. Create this helper and use it everywhere:
+
+const solidFill = (rgb: string) => ({ patternType: "solid", fgColor: { rgb } });
+
+Row layout (0-indexed):
+
+Rows 0-2: Project info (Name, Number, End Date) — NAVY background, white text, bold labels in column A, values in column C
+Row 3-4: Empty spacer rows
+Row 5: "Close Out Index/Tracking Log" title — NAVY background, white bold 16pt text in column C
+Row 6: Empty spacer
+Row 7: "Index" label in column C — LIGHT_GRAY background, bold 12pt dark text. Column H: "Color Key" header — DARK_CHAR background, white bold centered text, bordered with MED_GRAY
+Row 8: Column H: "Black: Closed (Received)" — light gray bg "E8E8E8", bold black text, bordered
+Row 9: Directory section (num 1) — LIGHT_BLUE background. Column H: "Red: Open" — pink bg "FFE5E5", bold red text "CC0000", bordered
+Row 10: Column H: "Blue - Owed by Structuretone" — light blue bg "E5E5FF", bold blue text "0000CC", bordered
+Dynamic section rows: LIGHT_BLUE background, bold dark text, bottom border in STEEL
+Vendor rows: Red text "FF0000", left medium border in STEEL, indent 1
+Last row: "End" in column C — NAVY background, white bold text
+Background color fills are applied ONLY to columns A through F. Column H (Color Key legend) has its own independent styling. Never apply the row-wide NAVY/LIGHT_BLUE/LIGHT_GRAY fills to column H.
+
+Column widths: [16, 6, 40, 52, 12, 12, 3, 32, 8, 8, 8]
+
+Row heights: Rows 0-2: 22pt, Row 5: 30pt, Row 7: 22pt, Row 9 (Directory): 22pt, all section header rows: 22pt, End row: 22pt
+
+Freeze panes: Use ws["!views"] = [{ state: "frozen", ySplit: 3 }] — NOT ws["!freeze"] (that doesn't work in xlsx-js-style)
+
+Fonts: All fonts use name: "Calibri" throughout the entire sheet.
+
+Helper functions needed:
+
+const borderThin = (rgb: string) => ({ style: "thin", color: { rgb } });
+const borderMed = (rgb: string) => ({ style: "medium", color: { rgb } });
+const allBorders = (rgb: string) => ({ top: borderThin(rgb), bottom: borderThin(rgb), left: borderThin(rgb), right: borderThin(rgb) });
+const bottomOnly = (rgb: string, style = "thin") => ({ bottom: { style, color: { rgb } } });
+
+Use an applyStyle(ref, style) function to set styles on existing cells and ensureCell(ref, style) to create empty cells with styles when no data exists (so background fills render properly).
+
