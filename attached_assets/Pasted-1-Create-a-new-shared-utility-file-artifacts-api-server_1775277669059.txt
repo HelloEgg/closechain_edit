@@ -1,0 +1,46 @@
+1. Create a new shared utility file artifacts/api-server/src/lib/downloadSections.ts:
+
+This centralizes all download folder structure logic so both the authenticated download and client portal download produce identical results.
+
+import { db, csiDocumentRequirementsTable } from "@workspace/db";
+export interface ActiveSection {
+  num: number;
+  folderName: string;
+  docType: string | null;
+}
+const CANONICAL_SECTIONS: { folderName: string; matchKeys: string[] }[] = [
+  { folderName: "Directory",                          matchKeys: ["directory"] },
+  { folderName: "Permits",                            matchKeys: ["permit"] },
+  { folderName: "Inspections & Sign-Offs",            matchKeys: ["inspection", "sign off", "sign-off"] },
+  { folderName: "As-Builts",                          matchKeys: ["as-built", "as built"] },
+  { folderName: "Balancing Reports",                  matchKeys: ["balancing"] },
+  { folderName: "Testing & Demonstrations",           matchKeys: ["testing", "demonstration"] },
+  { folderName: "Equipment O&M's",                    matchKeys: ["equipment", "o&m"] },
+  { folderName: "Project Submittals",                 matchKeys: ["submittal"] },
+  { folderName: "Warranties",                         matchKeys: ["warranty"] },
+  { folderName: "Architectural Maintenance Instructions", matchKeys: ["architectural", "maintenance instruction"] },
+  { folderName: "Key Acceptance",                     matchKeys: ["key acceptance"] },
+  { folderName: "Attic Stock",                        matchKeys: ["attic stock"] },
+  { folderName: "Punchlist Signoff",                  matchKeys: ["punchlist"] },
+  { folderName: "Close-out Acceptance (STI Use Only)", matchKeys: ["close-out", "closeout", "close out"] },
+];
+// Directory is handled separately as section 1 — exclude from dynamic numbering
+const NON_DIRECTORY_SECTIONS = CANONICAL_SECTIONS.filter(s => s.folderName !== "Directory");
+const PROJECT_LEVEL_TYPES = new Set([
+  "directory", "permit", "inspection/sign offs", "inspection/sign off",
+  "key acceptance", "attic stock", "punchlist signoff", "close-out acceptance",
+]);
+// "Permits" and "Inspections & Sign-Offs" ALWAYS appear even with no matching docs
+const ALWAYS_INCLUDE_FOLDERS = new Set(["Permits", "Inspections & Sign-Offs"]);
+
+Key functions to implement:
+
+matchCanonical(docType) — fuzzy-matches a doc type string against CANONICAL_SECTIONS using matchKeys
+isKnownStandardType(docType, knownCsiDocTypes) — case-insensitive check if a doc type exists in the known CSI types set
+loadKnownCsiDocTypes() — queries the csi_document_requirements table for all known standard document type names, plus adds PROJECT_LEVEL_TYPES. Returns a Set<string>.
+buildActiveSections(sortedDocTypes, projectLevelDocTypes, knownCsiDocTypes) — the core logic:
+First pass: loops through NON_DIRECTORY_SECTIONS (skips Directory). For each canonical section, tries to match ONLY known standard CSI document types (uses isKnownStandardType check before matchCanonical). Includes the section if it has a matching doc type, OR if it matches a project-level doc type, OR if it's in ALWAYS_INCLUDE_FOLDERS (Permits, Inspections & Sign-Offs).
+Second pass: collects all remaining doc types NOT placed in the first pass — these are custom types. Appends each as its own section using its actual name as the folder name.
+Final step: renumbers ALL active sections sequentially starting from 2 (Directory is always 1). No gaps.
+canonicalFolderName(section) — formats NN-FolderName (e.g., 02-Permits, 07-Equipment O&M's)
+sortDocTypes(keys, knownCsiDocTypes) — sorts doc types with known standard types first (in canonical order), then custom types alphabetically
