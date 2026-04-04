@@ -172,7 +172,36 @@ router.post("/projects", async (req, res): Promise<void> => {
     .values({ ...parsed.data, userId: req.user.id })
     .returning();
 
-  res.status(201).json({ ...project, totalDocuments: 0, uploadedDocuments: 0, approvedDocuments: 0, progress: 0 });
+  const { mapDocumentTypeToSection } = await import("../lib/closeoutSections");
+
+  const [projectLevelSub] = await db
+    .insert(subcontractorsTable)
+    .values({
+      projectId: project.id,
+      vendorName: "__PROJECT_LEVEL__",
+      vendorCode: "PROJECT",
+      csiCode: "000000",
+    })
+    .returning();
+
+  const projectLevelDocs = [
+    { documentType: "Directory", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Directory") },
+    { documentType: "Permit", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Permit") },
+    { documentType: "Inspection/Sign Offs", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Inspection/Sign Offs") },
+    { documentType: "Key Acceptance", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Key Acceptance") },
+    { documentType: "Attic Stock", parentDocumentType: null, packageSection: mapDocumentTypeToSection("Attic Stock") },
+  ];
+  await db.insert(documentSlotsTable).values(
+    projectLevelDocs.map((d) => ({
+      subcontractorId: projectLevelSub.id,
+      documentType: d.documentType,
+      parentDocumentType: d.parentDocumentType,
+      packageSection: d.packageSection,
+      status: "not_submitted" as const,
+    }))
+  );
+
+  res.status(201).json({ ...project, totalDocuments: projectLevelDocs.length, uploadedDocuments: 0, approvedDocuments: 0, progress: 0 });
 });
 
 router.get("/projects/:projectId", async (req, res): Promise<void> => {
