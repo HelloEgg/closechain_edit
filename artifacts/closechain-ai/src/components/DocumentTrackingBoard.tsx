@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import * as Dialog from "@radix-ui/react-dialog";
 
 const PACKAGE_SECTIONS = [
+  "Directory",
   "Permits",
   "Inspection/Sign Off",
   "As-Builts",
@@ -18,6 +19,8 @@ const PACKAGE_SECTIONS = [
   "Project Submittals",
   "Warranty",
   "Architectural Maintenance Instructions",
+  "Key Acceptance",
+  "Attic Stock",
 ];
 
 type ViewMode = "subcontractor" | "section";
