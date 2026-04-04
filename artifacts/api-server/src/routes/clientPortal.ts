@@ -1,9 +1,15 @@
 import { Router, type IRouter } from "express";
-import { eq, inArray } from "drizzle-orm";
+import { eq, ne, and, inArray, asc } from "drizzle-orm";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
 import { GetClientPortalParams, AiQueryBody } from "@workspace/api-zod";
 import { getCsiDivision } from "../lib/csiDivisions";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import {
+  loadKnownCsiDocTypes,
+  buildActiveSections,
+  canonicalFolderName,
+  sortDocTypes,
+} from "../lib/downloadSections";
 import archiver from "archiver";
 import OpenAI from "openai";
 
@@ -106,46 +112,63 @@ router.get("/client-portal/:token/download-all", async (req, res): Promise<void>
     return;
   }
 
-  const subs = await db
-    .select()
-    .from(subcontractorsTable)
-    .where(eq(subcontractorsTable.projectId, project.id))
-    .orderBy(subcontractorsTable.csiCode);
+  const sanitize = (name: string) => name.replace(/[<>:"/\\|?*]/g, "_").trim() || "Untitled";
 
-  const subsWithDocs = await Promise.all(
-    subs.map(async (sub) => {
-      const docs = await db
-        .select()
-        .from(documentSlotsTable)
-        .where(eq(documentSlotsTable.subcontractorId, sub.id))
-        .orderBy(documentSlotsTable.documentType);
-
-      const division = await getCsiDivision(sub.csiCode);
-      return { sub, division, docs };
+  const rows = await db
+    .select({
+      documentType: documentSlotsTable.documentType,
+      parentDocumentType: documentSlotsTable.parentDocumentType,
+      filePath: documentSlotsTable.filePath,
+      fileName: documentSlotsTable.fileName,
+      vendorName: subcontractorsTable.vendorName,
+      csiCode: subcontractorsTable.csiCode,
     })
-  );
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .where(
+      and(
+        eq(subcontractorsTable.projectId, project.id),
+        ne(subcontractorsTable.vendorName, "__PROJECT_LEVEL__"),
+        ne(subcontractorsTable.csiCode, "000000"),
+      ),
+    )
+    .orderBy(asc(subcontractorsTable.csiCode), asc(documentSlotsTable.documentType));
 
-  const docsWithFiles = subsWithDocs.flatMap(({ sub, division, docs }) =>
-    docs
-      .filter((d) => d.filePath)
-      .map((d) => ({
-        filePath: d.filePath!,
-        fileName: d.fileName || "document",
-        documentType: d.documentType,
-        parentDocumentType: d.parentDocumentType,
-        packageSection: d.packageSection || "General",
-        vendorName: sub.vendorName,
-        csiCode: sub.csiCode,
-        divisionName: division?.name || "Unknown",
-      }))
-  );
+  const projectLevelDocsResult = await db
+    .select({ documentType: documentSlotsTable.documentType })
+    .from(documentSlotsTable)
+    .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+    .where(and(eq(subcontractorsTable.projectId, project.id), eq(subcontractorsTable.vendorName, "__PROJECT_LEVEL__")));
+  const projectLevelDocTypes = new Set(projectLevelDocsResult.map(d => d.documentType));
 
-  if (docsWithFiles.length === 0) {
-    res.status(404).json({ error: "No documents available for download" });
-    return;
+  const knownCsiDocTypes = await loadKnownCsiDocTypes();
+
+  interface DocGroup {
+    directFiles: { filePath: string; fileName: string; vendorName: string; csiCode: string }[];
+    subTypeFiles: Record<string, { filePath: string; fileName: string; vendorName: string; csiCode: string }[]>;
+  }
+  const hierarchy: Record<string, DocGroup> = {};
+  for (const row of rows) {
+    const parentKey = row.parentDocumentType || row.documentType;
+    if (!hierarchy[parentKey]) {
+      hierarchy[parentKey] = { directFiles: [], subTypeFiles: {} };
+    }
+    if (!row.filePath) continue;
+    const entry = { filePath: row.filePath, fileName: row.fileName || "document", vendorName: row.vendorName, csiCode: row.csiCode };
+    if (row.parentDocumentType) {
+      if (!hierarchy[parentKey].subTypeFiles[row.documentType]) {
+        hierarchy[parentKey].subTypeFiles[row.documentType] = [];
+      }
+      hierarchy[parentKey].subTypeFiles[row.documentType].push(entry);
+    } else {
+      hierarchy[parentKey].directFiles.push(entry);
+    }
   }
 
-  const sanitize = (name: string) => name.replace(/[<>:"/\\|?*]/g, "_").trim();
+  const docTypeKeys = Object.keys(hierarchy);
+  const sortedDt = sortDocTypes(docTypeKeys, knownCsiDocTypes);
+  const activeSections = buildActiveSections(sortedDt, projectLevelDocTypes, knownCsiDocTypes);
+
   const projectFolder = sanitize(project.name);
 
   res.setHeader("Content-Type", "application/zip");
@@ -163,25 +186,47 @@ router.get("/client-portal/:token/download-all", async (req, res): Promise<void>
   });
   archive.pipe(res);
 
-  for (const doc of docsWithFiles) {
-    try {
-      const result = await objectStorageService.downloadObjectDirect(doc.filePath);
-      if (!result) continue;
+  if (projectLevelDocTypes.has("Directory")) {
+    archive.append(Buffer.alloc(0), { name: `${projectFolder}/01-Directory/` });
+  }
 
-      const ext = doc.fileName.includes(".") ? "" : ".pdf";
-      const docTypeFolder = sanitize(doc.parentDocumentType || doc.documentType);
-      const subDocTypeFolder = doc.parentDocumentType ? sanitize(doc.documentType) : "";
-      const vendorFolder = sanitize(doc.vendorName);
-      const fileName = sanitize(doc.fileName) + ext;
+  for (const section of activeSections) {
+    const sectionFolder = sanitize(canonicalFolderName(section));
+    const docType = section.docType;
 
-      const pathParts = [projectFolder, docTypeFolder];
-      if (subDocTypeFolder) pathParts.push(subDocTypeFolder);
-      pathParts.push(vendorFolder, fileName);
-      const archivePath = pathParts.join("/");
+    archive.append(Buffer.alloc(0), { name: `${projectFolder}/${sectionFolder}/` });
 
-      archive.append(result.data, { name: archivePath });
-    } catch (err) {
-      console.warn(`Skipping file ${doc.filePath}:`, err);
+    if (!docType || !hierarchy[docType]) continue;
+
+    const group = hierarchy[docType];
+
+    for (const file of group.directFiles) {
+      const vendorFolder = sanitize(file.vendorName);
+      const fileName = sanitize(file.fileName);
+      try {
+        const result = await objectStorageService.downloadObjectDirect(file.filePath);
+        if (result) {
+          archive.append(result.data, { name: `${projectFolder}/${sectionFolder}/${vendorFolder}/${fileName}` });
+        }
+      } catch (err) {
+        console.warn(`Skipping file ${file.filePath}:`, err);
+      }
+    }
+
+    for (const [subType, files] of Object.entries(group.subTypeFiles).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const subTypeFolder = sanitize(subType);
+      for (const file of files) {
+        const vendorFolder = sanitize(file.vendorName);
+        const fileName = sanitize(file.fileName);
+        try {
+          const result = await objectStorageService.downloadObjectDirect(file.filePath);
+          if (result) {
+            archive.append(result.data, { name: `${projectFolder}/${sectionFolder}/${subTypeFolder}/${vendorFolder}/${fileName}` });
+          }
+        } catch (err) {
+          console.warn(`Skipping file ${file.filePath}:`, err);
+        }
+      }
     }
   }
 

@@ -382,10 +382,16 @@ router.get("/projects/:projectId/download", async (req, res) => {
 
     const hierarchy = buildHierarchy(rows);
 
+    const projectLevelDocs = await db
+      .select({ documentType: documentSlotsTable.documentType })
+      .from(documentSlotsTable)
+      .innerJoin(subcontractorsTable, eq(documentSlotsTable.subcontractorId, subcontractorsTable.id))
+      .where(and(eq(subcontractorsTable.projectId, projectId), eq(subcontractorsTable.vendorName, "__PROJECT_LEVEL__")));
+    const projectLevelDocTypes = new Set(projectLevelDocs.map(d => d.documentType));
+
     const knownCsiDocTypes = await loadKnownCsiDocTypes();
     const docTypeKeys = Object.keys(hierarchy);
     const sortedDt = sortDocTypes(docTypeKeys, knownCsiDocTypes);
-    const projectLevelDocTypes = new Set<string>();
     const activeSections = buildActiveSections(sortedDt, projectLevelDocTypes, knownCsiDocTypes);
 
     const projectFolder = sanitize(project.name);
@@ -414,7 +420,9 @@ router.get("/projects/:projectId/download", async (req, res) => {
     );
     archive.append(xlsxBuffer, { name: `${projectFolder}/00-Index/Tracking Log.xlsx` });
 
-    archive.append(Buffer.alloc(0), { name: `${projectFolder}/01-Directory/` });
+    if (projectLevelDocTypes.has("Directory")) {
+      archive.append(Buffer.alloc(0), { name: `${projectFolder}/01-Directory/` });
+    }
 
     for (const section of activeSections) {
       const sectionFolder = sanitize(canonicalFolderName(section));
