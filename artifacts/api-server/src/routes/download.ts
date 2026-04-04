@@ -2,7 +2,7 @@ import { Router } from "express";
 import archiver from "archiver";
 import XLSX from "xlsx-js-style";
 import { db, projectsTable, subcontractorsTable, documentSlotsTable } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, ne, and, asc } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { getCsiDivision } from "../lib/csiDivisions";
 import {
@@ -15,23 +15,6 @@ import {
 
 const router = Router();
 const storageService = new ObjectStorageService();
-
-const DOC_TYPE_ORDER = [
-  "Permit",
-  "Inspection/Sign Offs",
-  "As-Built",
-  "Balancing Report",
-  "Testing/Demonstration",
-  "Equipment O&M",
-  "Submittal",
-  "Warranty",
-  "Architectural Maintenance Instruction",
-];
-
-function docTypeSortKey(docType: string): number {
-  const idx = DOC_TYPE_ORDER.indexOf(docType);
-  return idx === -1 ? DOC_TYPE_ORDER.length : idx;
-}
 
 function sanitize(name: string): string {
   return name.replace(/[<>:"/\\|?*]+/g, "_").replace(/\.+$/, "").trim() || "Untitled";
@@ -273,7 +256,6 @@ async function buildTrackingLog(
       if (isTestingSection) {
         const displayEntries: { label: string; status: string }[] = [];
         for (const v of allVendors) {
-          if (v.vendorName === "__PROJECT_LEVEL__") continue;
           const subDocLabel = v.subDocType || docType;
           const label = `"${subDocLabel}" ${v.vendorName}`;
           if (!displayEntries.some((e) => e.label === label)) {
@@ -295,7 +277,7 @@ async function buildTrackingLog(
         const uniqueVendors = new Map<string, VendorEntry>();
         for (const v of allVendors) {
           const dedupeKey = `${v.vendorName}::${v.csiCode}`;
-          if (v.vendorName !== "__PROJECT_LEVEL__" && !uniqueVendors.has(dedupeKey)) {
+          if (!uniqueVendors.has(dedupeKey)) {
             uniqueVendors.set(dedupeKey, v);
           }
         }
@@ -389,7 +371,13 @@ router.get("/projects/:projectId/download", async (req, res) => {
         subcontractorsTable,
         eq(documentSlotsTable.subcontractorId, subcontractorsTable.id)
       )
-      .where(eq(subcontractorsTable.projectId, projectId))
+      .where(
+        and(
+          eq(subcontractorsTable.projectId, projectId),
+          ne(subcontractorsTable.vendorName, "__PROJECT_LEVEL__"),
+          ne(subcontractorsTable.csiCode, "000000"),
+        ),
+      )
       .orderBy(asc(subcontractorsTable.csiCode), asc(documentSlotsTable.documentType));
 
     const hierarchy = buildHierarchy(rows);
@@ -397,11 +385,7 @@ router.get("/projects/:projectId/download", async (req, res) => {
     const knownCsiDocTypes = await loadKnownCsiDocTypes();
     const docTypeKeys = Object.keys(hierarchy);
     const sortedDt = sortDocTypes(docTypeKeys, knownCsiDocTypes);
-    const projectLevelDocTypes = new Set(
-      rows
-        .filter((r) => r.vendorName === "__PROJECT_LEVEL__")
-        .map((r) => r.parentDocumentType || r.documentType),
-    );
+    const projectLevelDocTypes = new Set<string>();
     const activeSections = buildActiveSections(sortedDt, projectLevelDocTypes, knownCsiDocTypes);
 
     const projectFolder = sanitize(project.name);
@@ -428,23 +412,25 @@ router.get("/projects/:projectId/download", async (req, res) => {
       hierarchy,
       activeSections,
     );
-    archive.append(xlsxBuffer, { name: `${projectFolder}/Tracking Log.xlsx` });
+    archive.append(xlsxBuffer, { name: `${projectFolder}/00-Index/Tracking Log.xlsx` });
 
-    const sortedDocTypes = Object.keys(hierarchy).sort(
-      (a, b) => docTypeSortKey(a) - docTypeSortKey(b)
-    );
+    archive.append(Buffer.alloc(0), { name: `${projectFolder}/01-Directory/` });
 
-    for (const docType of sortedDocTypes) {
+    for (const section of activeSections) {
+      const sectionFolder = sanitize(canonicalFolderName(section));
+      const docType = section.docType;
+
+      archive.append(Buffer.alloc(0), { name: `${projectFolder}/${sectionFolder}/` });
+
+      if (!docType || !hierarchy[docType]) {
+        continue;
+      }
+
       const group = hierarchy[docType];
-      const safeDocType = sanitize(docType);
 
       for (const vendor of group.directVendors) {
-        const safeVendor = sanitize(
-          vendor.vendorName === "__PROJECT_LEVEL__"
-            ? "Project Level"
-            : vendor.vendorName
-        );
-        const folderPath = `${projectFolder}/${safeDocType}/${safeVendor}`;
+        const safeVendor = sanitize(vendor.vendorName);
+        const folderPath = `${projectFolder}/${sectionFolder}/${safeVendor}`;
 
         if (vendor.filePath) {
           try {
@@ -474,12 +460,8 @@ router.get("/projects/:projectId/download", async (req, res) => {
         const safeSubType = sanitize(subType);
 
         for (const vendor of subGroup.vendors) {
-          const safeVendor = sanitize(
-            vendor.vendorName === "__PROJECT_LEVEL__"
-              ? "Project Level"
-              : vendor.vendorName
-          );
-          const folderPath = `${projectFolder}/${safeDocType}/${safeSubType}/${safeVendor}`;
+          const safeVendor = sanitize(vendor.vendorName);
+          const folderPath = `${projectFolder}/${sectionFolder}/${safeSubType}/${safeVendor}`;
 
           if (vendor.filePath) {
             try {
