@@ -128,13 +128,14 @@ export default function NewProjectPage() {
       const subcontractors = validSubs.map(s => ({
         project_id: project.id,
         user_id: user.id,
+        name: s.csiDivision,
         vendor_name: s.vendorName,
         vendor_code: s.vendorCode || s.csiCode,
         csi_code: s.csiCode,
         csi_division: s.csiDivision,
-        total_documents: s.documentTypes.length,
-        uploaded_documents: 0,
-        approved_documents: 0,
+        total_docs: s.documentTypes.length,
+        received_docs: 0,
+        progress: 0,
       }))
 
       const { error: subsError } = await supabase
