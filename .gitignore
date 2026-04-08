@@ -50,3 +50,19 @@ Thumbs.db
 
 # Uploaded files
 .data/
+
+# Next.js
+.next/
+out/
+
+# Cloned repository files - exclude from deployment
+lib/replit-auth-web
+lib/integrations-openai-ai-server
+lib/integrations-openai-ai-react
+lib/api-client-react
+lib/api-zod
+lib/db
+lib/object-storage-web
+artifacts
+_backup_repo
+_original_repo_lib

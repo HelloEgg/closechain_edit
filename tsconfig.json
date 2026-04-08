@@ -30,20 +30,19 @@
   },
   "include": [
     "next-env.d.ts",
-    "app/**/*",
-    "lib/supabase/**/*",
+    "app",
+    "lib/supabase",
     "proxy.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "**/*.config.js",
-    "**/*.config.ts",
     ".next",
-    "artifacts/**",
-    "lib/**",
-    "!lib/supabase/**",
-    "scripts/**"
+    "lib",
+    "artifacts",
+    "scripts",
+    "_backup_repo",
+    "_original_repo_lib"
   ]
 }
