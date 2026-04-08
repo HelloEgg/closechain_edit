@@ -4,19 +4,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  webpack: (config) => {
-    // Ignore the cloned repository directories during build
-    config.watchOptions = {
-      ...config.watchOptions,
-      ignored: [
-        '**/node_modules',
-        '**/artifacts/**',
-        '**/scripts/**',
-        '**/_original_repo_lib/**',
-      ],
-    }
-    return config
-  },
+  // Empty turbopack config to acknowledge we're using Turbopack in Next.js 16
+  turbopack: {},
 }
 
 module.exports = nextConfig
