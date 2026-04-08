@@ -1,116 +1,227 @@
 'use client'
 
-import {
-  ArrowLeft,
-  Building2,
-  Calendar,
-  Hash,
-  FileText,
-  HardHat,
-  Trash2,
-  CheckCircle2,
-  Download,
-  LogOut,
-} from 'lucide-react'
-import { useState } from 'react'
-import Image from 'next/image'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat } from 'lucide-react'
+import Image from 'next/image'
 
-interface Project {
+const DOCUMENT_TYPES = [
+  'Submittal',
+  'Shop Drawing',
+  'Product Data',
+  'Material Certificate',
+  'Test Report',
+  'Warranty',
+  'O&M Manual',
+  'As-Built Drawing',
+  'Closeout Document',
+]
+
+interface Document {
   id: string
-  name: string
-  job_number: string
-  end_date: string
-  client_name: string
-  status: 'draft' | 'in_progress' | 'approved'
-  uploaded_documents: number
-  total_documents: number
-  approved_documents: number
-  user_id: string
-  created_at: string
+  document_type: string
+  file_name: string
+  file_url: string
+  status: string
+  uploaded_at: string
+  approved_at: string | null
+  subcontractor_id: string
 }
 
 interface Subcontractor {
   id: string
   name: string
+  csi_division: string
   vendor_name: string
   vendor_code: string
   csi_code: string
-  csi_division: string
   total_docs: number
   received_docs: number
   progress: number
-  project_id: string
-  user_id: string
-  created_at: string
+}
+
+interface Project {
+  id: string
+  name: string
+  job_number: string
+  client_name: string
+  end_date: string
+  status: string
+  total_documents: number
+  uploaded_documents: number
+  approved_documents: number
 }
 
 interface Profile {
-  id: string
   full_name: string | null
   company_name: string | null
 }
 
-interface ProjectDetailsClientProps {
-  project: Project
-  subcontractors: Subcontractor[]
-  user: User
-  profile: Profile | null
-}
-
 export default function ProjectDetailsClient({
-  project,
-  subcontractors,
+  project: initialProject,
+  subcontractors: initialSubcontractors,
   user,
   profile,
-}: ProjectDetailsClientProps) {
-  const [activeTab, setActiveTab] = useState<'documents' | 'subcontractors'>('documents')
+}: {
+  project: Project
+  subcontractors: Subcontractor[]
+  user: any
+  profile: Profile | null
+}) {
   const router = useRouter()
+  const [project, setProject] = useState<Project>(initialProject)
+  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>(initialSubcontractors)
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [activeView, setActiveView] = useState<'documents' | 'subcontractors'>('documents')
+  const [selectedSubcontractor, setSelectedSubcontractor] = useState<string | null>(
+    initialSubcontractors[0]?.id || null
+  )
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const totalDocs = project.total_documents || 0
-  const uploadedDocs = project.uploaded_documents || 0
-  const approvedDocs = project.approved_documents || 0
-  const progress = totalDocs > 0 ? Math.round((approvedDocs / totalDocs) * 100) : 0
+  useEffect(() => {
+    loadDocuments()
+  }, [])
 
-  async function handleSignOut() {
+  const loadDocuments = async () => {
     const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/auth/login')
-    router.refresh()
+    const { data } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('project_id', project.id)
+      .order('created_at', { ascending: false })
+
+    if (data) {
+      setDocuments(data)
+    }
+    setLoading(false)
   }
 
-  async function handleDelete() {
-    if (!confirm(`Delete "${project.name}"? This will permanently remove the project and all subcontractors. This cannot be undone.`)) {
-      return
+  const refreshData = async () => {
+    const supabase = createClient()
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', project.id)
+      .single()
+
+    const { data: subsData } = await supabase
+      .from('subcontractors')
+      .select('*')
+      .eq('project_id', project.id)
+
+    const { data: docsData } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('project_id', project.id)
+      .order('created_at', { ascending: false })
+
+    if (projectData) setProject(projectData)
+    if (subsData) setSubcontractors(subsData)
+    if (docsData) setDocuments(docsData)
+  }
+
+  const handleUpload = async (subcontractorId: string, documentType: string, file: File) => {
+    setUploading(`${subcontractorId}-${documentType}`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('projectId', project.id)
+      formData.append('subcontractorId', subcontractorId)
+      formData.append('documentType', documentType)
+
+      const response = await fetch('/api/upload-document', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      await refreshData()
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload document')
+    } finally {
+      setUploading(null)
     }
+  }
+
+  const handleApprove = async (documentId: string) => {
+    try {
+      const response = await fetch('/api/approve-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId, projectId: project.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Approval failed')
+      }
+
+      await refreshData()
+    } catch (error) {
+      console.error('Approval error:', error)
+      alert('Failed to approve document')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this project?')) return
 
     const supabase = createClient()
     const { error } = await supabase.from('projects').delete().eq('id', project.id)
 
     if (error) {
       alert('Failed to delete project')
-    } else {
-      router.push('/dashboard')
-      router.refresh()
+      return
+    }
+
+    router.push('/dashboard')
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-700'
+      case 'active':
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-700'
+      case 'completed':
+      case 'approved':
+        return 'bg-green-100 text-green-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
     }
   }
 
+  const overallProgress =
+    project.total_documents > 0
+      ? Math.round(((project.uploaded_documents || 0) / project.total_documents) * 100)
+      : 0
+
+  const currentSubcontractor = subcontractors.find((s) => s.id === selectedSubcontractor)
+  const subcontractorDocs = documents.filter((d) => d.subcontractor_id === selectedSubcontractor)
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Image src="/logo.svg" alt="Closechain AI" width={200} height={50} className="h-10 w-auto" />
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-foreground">
-                {profile?.full_name || user.email}
-              </p>
-              {profile?.company_name && (
-                <p className="text-xs text-muted-foreground">{profile.company_name}</p>
-              )}
+              <p className="text-sm font-medium text-foreground">{profile?.full_name || user.email}</p>
+              {profile?.company_name && <p className="text-xs text-muted-foreground">{profile.company_name}</p>}
             </div>
             <button
               onClick={handleSignOut}
@@ -123,215 +234,253 @@ export default function ProjectDetailsClient({
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
           onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </button>
 
-        {/* Project Header Card */}
-        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden mb-8">
-          <div className="p-6 md:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <StatusBadge status={project.status} />
-                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Building2 className="w-4 h-4" /> {project.client_name}
-                  </span>
-                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Hash className="w-3.5 h-3.5" /> {project.job_number}
-                  </span>
-                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> {new Date(project.end_date).toLocaleDateString()}
-                  </span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground tracking-tight">
-                  {project.name}
-                </h1>
-              </div>
-
-              <div className="flex items-center gap-4 shrink-0 bg-background p-4 rounded-xl border border-border/50">
-                <div className="flex items-center gap-4 pr-4 border-r border-border">
-                  <div className="text-center">
-                    <p className="text-2xl font-display font-bold text-foreground">{subcontractors.length}</p>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Subs</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-display font-bold text-foreground">{approvedDocs}</p>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Docs</p>
-                  </div>
-                </div>
-
-                <div className="text-center px-2">
-                  <div className="relative inline-flex items-center justify-center">
-                    <svg className="w-16 h-16 transform -rotate-90">
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="transparent"
-                        className="text-secondary"
-                      />
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 28}
-                        strokeDashoffset={2 * Math.PI * 28 * (1 - progress / 100)}
-                        className="text-primary transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <span className="absolute text-sm font-bold text-primary">{Math.round(progress)}%</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleDelete}
-                  title="Delete project"
-                  className="ml-2 p-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-border"
+        <div className="bg-card rounded-2xl border border-border p-8 mb-6">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                    project.status || 'draft'
+                  )}`}
                 >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                  {(project.status || 'draft').charAt(0).toUpperCase() + (project.status || 'draft').slice(1)}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <Building2 className="w-4 h-4" /> {project.client_name}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5" /> {project.job_number}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" /> {new Date(project.end_date).toLocaleDateString()}
+                </span>
+              </div>
+              <h1 className="text-4xl font-display font-bold text-foreground mb-4">{project.name}</h1>
+            </div>
+            <button
+              onClick={handleDelete}
+              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{subcontractors.length}</div>
+              <div className="text-sm text-muted-foreground mt-1">SUBS</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{project.approved_documents || 0}</div>
+              <div className="text-sm text-muted-foreground mt-1">DOCS</div>
+            </div>
+            <div className="text-center">
+              <div className="relative w-24 h-24 mx-auto">
+                <svg className="w-24 h-24 transform -rotate-90">
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    className="text-muted"
+                  />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 40}`}
+                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - overallProgress / 100)}`}
+                    className="text-primary transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xl font-bold text-foreground">{overallProgress}%</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-border mb-6">
-          <div className="flex gap-6">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="flex border-b border-border">
             <button
-              onClick={() => setActiveTab('documents')}
-              className={`px-6 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-                activeTab === 'documents'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground'
+              onClick={() => setActiveView('documents')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeView === 'documents'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <FileText className="w-4 h-4" /> Document View
+              <FileText className="w-4 h-4" />
+              Document View
             </button>
             <button
-              onClick={() => setActiveTab('subcontractors')}
-              className={`px-6 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-                activeTab === 'subcontractors'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground'
+              onClick={() => setActiveView('subcontractors')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeView === 'subcontractors'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <HardHat className="w-4 h-4" /> Subcontractor View
+              <HardHat className="w-4 h-4" />
+              Subcontractor View
             </button>
           </div>
-        </div>
 
-        {/* Content */}
-        {activeTab === 'documents' && (
-          <div className="bg-card rounded-2xl border border-border p-12 text-center shadow-sm">
-            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">No documents yet</h3>
-            <p className="text-muted-foreground">
-              Document management will be available in a future update.
-            </p>
-          </div>
-        )}
+          <div className="p-6">
+            {activeView === 'documents' ? (
+              <div className="grid grid-cols-4 gap-4">
+                <div className="col-span-1 space-y-2">
+                  {subcontractors.map((sub) => {
+                    const subDocs = documents.filter((d) => d.subcontractor_id === sub.id)
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => setSelectedSubcontractor(sub.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                          selectedSubcontractor === sub.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        <div className="font-medium text-sm">{sub.csi_division}</div>
+                        <div className="text-xs opacity-80 mt-1">
+                          {subDocs.length} / {DOCUMENT_TYPES.length} docs
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
 
-        {activeTab === 'subcontractors' && (
-          <>
-            {subcontractors.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-12 text-center shadow-sm">
-                <HardHat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No subcontractors yet</h3>
-                <p className="text-muted-foreground">Subcontractors will appear here once added to the project.</p>
+                <div className="col-span-3">
+                  {currentSubcontractor ? (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">{currentSubcontractor.csi_division}</h3>
+                      <div className="space-y-3">
+                        {DOCUMENT_TYPES.map((docType) => {
+                          const existingDoc = subcontractorDocs.find((d) => d.document_type === docType)
+                          const isUploading = uploading === `${currentSubcontractor.id}-${docType}`
+
+                          return (
+                            <div key={docType} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-muted-foreground" />
+                                <div>
+                                  <div className="font-medium">{docType}</div>
+                                  {existingDoc && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {existingDoc.file_name} •{' '}
+                                      {new Date(existingDoc.uploaded_at).toLocaleDateString()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {existingDoc ? (
+                                  <>
+                                    <a
+                                      href={`/api/file?pathname=${encodeURIComponent(existingDoc.file_url)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1 text-sm bg-background rounded hover:bg-background/80"
+                                    >
+                                      View
+                                    </a>
+                                    {existingDoc.status === 'uploaded' && (
+                                      <button
+                                        onClick={() => handleApprove(existingDoc.id)}
+                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                        Approve
+                                      </button>
+                                    )}
+                                    {existingDoc.status === 'approved' && (
+                                      <span className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded">
+                                        <Check className="w-3 h-3" />
+                                        Approved
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <label className="flex items-center gap-1 px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 cursor-pointer">
+                                    <Upload className="w-3 h-3" />
+                                    {isUploading ? 'Uploading...' : 'Upload'}
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      disabled={isUploading}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) {
+                                          handleUpload(currentSubcontractor.id, docType, file)
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-12">
+                      Select a subcontractor to view documents
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {subcontractors.map((sub) => {
-                  const subProgress =
-                    sub.total_docs > 0 ? Math.round((sub.received_docs / sub.total_docs) * 100) : 0
+                  const subDocs = documents.filter((d) => d.subcontractor_id === sub.id)
+                  const progress =
+                    DOCUMENT_TYPES.length > 0 ? Math.round((subDocs.length / DOCUMENT_TYPES.length) * 100) : 0
 
                   return (
-                    <div
-                      key={sub.id}
-                      className="bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                            <HardHat className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-foreground">{sub.csi_division}</h3>
-                            {sub.vendor_name && (
-                              <p className="text-sm text-muted-foreground mt-0.5">{sub.vendor_name}</p>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs font-medium text-muted-foreground">
-                                Code: {sub.csi_code}
-                              </span>
-                              {sub.vendor_code && (
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  • Vendor: {sub.vendor_code}
-                                </span>
-                              )}
-                            </div>
+                    <div key={sub.id} className="p-6 bg-muted rounded-xl">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{sub.csi_division}</h3>
+                          <p className="text-sm text-muted-foreground">{sub.vendor_name || 'No vendor assigned'}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary">{progress}%</div>
+                          <div className="text-xs text-muted-foreground">
+                            {subDocs.length} / {DOCUMENT_TYPES.length} docs
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-6 md:w-1/3">
-                          <div className="text-right flex-1">
-                            <p className="text-sm font-bold text-foreground">
-                              {sub.received_docs} / {sub.total_docs}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Documents Received</p>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-end mb-1">
-                              <span className="text-xs font-bold text-primary">{subProgress}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary transition-all"
-                                style={{ width: `${Math.max(0, Math.min(100, subProgress))}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                      </div>
+                      <div className="w-full bg-background rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
                     </div>
                   )
                 })}
               </div>
             )}
-          </>
-        )}
+          </div>
+        </div>
       </main>
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: 'in_progress' | 'approved' | 'draft' }) {
-  const variants = {
-    in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-700' },
-    approved: { label: 'Published', className: 'bg-green-100 text-green-700' },
-    draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700' },
-  }
-
-  const variant = variants[status]
-
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${variant.className}`}
-    >
-      {variant.label}
-    </span>
   )
 }
