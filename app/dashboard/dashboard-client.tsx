@@ -175,14 +175,14 @@ export default function DashboardClient({ projects, user, profile }: DashboardCl
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => {
-                  const progress =
-                    project.total_documents > 0
-                      ? (project.uploaded_documents / project.total_documents) * 100
-                      : 0
+                  const totalDocs = project.total_documents || 0
+                  const uploadedDocs = project.uploaded_documents || 0
+                  const progress = totalDocs > 0 ? (uploadedDocs / totalDocs) * 100 : 0
 
                   return (
                     <div
                       key={project.id}
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}
                       className="group bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 flex flex-col h-full cursor-pointer relative overflow-hidden"
                     >
                       <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -212,12 +212,12 @@ export default function DashboardClient({ projects, user, profile }: DashboardCl
                         <div className="flex justify-between items-end mb-2">
                           <div className="text-sm">
                             <span className="font-semibold text-foreground">
-                              {project.uploaded_documents}
+                              {uploadedDocs}
                             </span>
                             <span className="text-muted-foreground"> received</span>
                             <span className="text-muted-foreground mx-1">/</span>
                             <span className="font-semibold text-foreground">
-                              {project.total_documents - project.uploaded_documents}
+                              {totalDocs - uploadedDocs}
                             </span>
                             <span className="text-muted-foreground"> open</span>
                           </div>
