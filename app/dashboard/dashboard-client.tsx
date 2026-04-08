@@ -83,7 +83,10 @@ export default function DashboardClient({ projects, user, profile }: DashboardCl
             </p>
           </div>
 
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-primary/90 transition-all hover:-translate-y-0.5">
+          <button
+            onClick={() => router.push('/dashboard/new')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-primary/90 transition-all hover:-translate-y-0.5"
+          >
             <Plus className="w-4 h-4" />
             New Project
           </button>
@@ -161,7 +164,10 @@ export default function DashboardClient({ projects, user, profile }: DashboardCl
                 <p className="text-muted-foreground mb-6">
                   Create your first project to get started with closeout management.
                 </p>
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-primary/90 transition-all">
+                <button
+                  onClick={() => router.push('/dashboard/new')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-primary/90 transition-all"
+                >
                   <Plus className="w-4 h-4" />
                   Create Project
                 </button>
