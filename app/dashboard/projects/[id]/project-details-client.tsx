@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat } from 'lucide-react'
 import Image from 'next/image'
+import ChatWidget from './chat-widget'
 
 const DOCUMENT_TYPES = [
   'Submittal',
@@ -481,6 +482,9 @@ export default function ProjectDetailsClient({
           </div>
         </div>
       </main>
+
+      {/* AI Chat Widget */}
+      <ChatWidget projectId={project.id} />
     </div>
   )
 }
