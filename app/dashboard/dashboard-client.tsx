@@ -36,8 +36,8 @@ export default function DashboardClient({ projects, user, profile }: DashboardCl
   const [activeTab, setActiveTab] = useState<'projects' | 'subcontractors'>('projects')
   const router = useRouter()
 
-  const totalProjects = projects.length
-  const publishedProjects = projects.filter((p) => p.status === 'approved').length
+  const totalProjects = projects?.length || 0
+  const publishedProjects = projects?.filter((p) => p.status === 'approved').length || 0
   const notPublishedProjects = totalProjects - publishedProjects
 
   async function handleSignOut() {
