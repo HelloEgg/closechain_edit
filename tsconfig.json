@@ -30,21 +30,19 @@
   },
   "include": [
     "next-env.d.ts",
-    "app",
-    "lib/supabase",
+    "app/**/*",
+    "lib/supabase/**/*",
     "proxy.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "artifacts",
-    "lib/replit-auth-web",
-    "lib/integrations-openai-ai-server",
-    "lib/integrations-openai-ai-react",
-    "lib/api-client-react",
-    "lib/api-zod",
-    "lib/db",
-    "lib/object-storage-web",
-    "scripts"
+    "**/*.config.js",
+    "**/*.config.ts",
+    ".next",
+    "artifacts/**",
+    "lib/**",
+    "!lib/supabase/**",
+    "scripts/**"
   ]
 }
