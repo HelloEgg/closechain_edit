@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat } from 'lucide-react'
+import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat, Users, FolderOpen, ChevronDown, ChevronUp, Plus, Clock } from 'lucide-react'
 import Image from 'next/image'
 import ChatWidget from './chat-widget'
 
@@ -80,6 +80,8 @@ export default function ProjectDetailsClient({
   )
   const [uploading, setUploading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [subView, setSubView] = useState<'bySubcontractor' | 'bySection'>('bySubcontractor')
+  const [expandedSub, setExpandedSub] = useState<string | null>(null)
 
   useEffect(() => {
     loadDocuments()
@@ -449,34 +451,226 @@ export default function ProjectDetailsClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {subcontractors.map((sub) => {
-                  const subDocs = documents.filter((d) => d.subcontractor_id === sub.id)
-                  const progress =
-                    DOCUMENT_TYPES.length > 0 ? Math.round((subDocs.length / DOCUMENT_TYPES.length) * 100) : 0
+                {/* Sub-tabs: By Subcontractor / By Section */}
+                <div className="flex gap-2 mb-6">
+                  <button
+                    onClick={() => setSubView('bySubcontractor')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      subView === 'bySubcontractor'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    By Subcontractor
+                  </button>
+                  <button
+                    onClick={() => setSubView('bySection')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      subView === 'bySection'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    By Section
+                  </button>
+                </div>
 
-                  return (
-                    <div key={sub.id} className="p-6 bg-muted rounded-xl">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold">{sub.csi_division}</h3>
-                          <p className="text-sm text-muted-foreground">{sub.vendor_name || 'No vendor assigned'}</p>
+                {subView === 'bySubcontractor' ? (
+                  <div className="space-y-3">
+                    {subcontractors.map((sub) => {
+                      const subDocs = documents.filter((d) => d.subcontractor_id === sub.id)
+                      const approvedCount = subDocs.filter((d) => d.status === 'approved').length
+                      const totalDocs = DOCUMENT_TYPES.length
+                      const progress = totalDocs > 0 ? Math.round((approvedCount / totalDocs) * 100) : 0
+                      const isExpanded = expandedSub === sub.id
+
+                      return (
+                        <div key={sub.id} className="border border-border rounded-xl overflow-hidden">
+                          {/* Subcontractor Header */}
+                          <button
+                            onClick={() => setExpandedSub(isExpanded ? null : sub.id)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center">
+                                <HardHat className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                              <div className="text-left">
+                                <div className="font-semibold text-lg">{sub.vendor_name || sub.csi_division}</div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
+                                    {sub.csi_division}
+                                  </span>
+                                  <span>CSI: {sub.csi_code?.padStart(6, '0') || '000000'}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                              <div className="text-right">
+                                <div className="font-semibold">
+                                  {approvedCount} / {totalDocs}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Approved</div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium">{progress}%</span>
+                                <div className="w-20 bg-muted rounded-full h-1.5">
+                                  <div
+                                    className="bg-primary h-1.5 rounded-full transition-all"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                              {isExpanded ? (
+                                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Expanded Documents */}
+                          {isExpanded && (
+                            <div className="border-t border-border bg-muted/30 p-4">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-medium flex items-center gap-2">
+                                  <FileText className="w-4 h-4" />
+                                  Required Documents
+                                </h4>
+                                <button className="flex items-center gap-1 text-sm text-primary hover:underline">
+                                  <Plus className="w-4 h-4" />
+                                  Add Requirement
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                {DOCUMENT_TYPES.map((docType) => {
+                                  const existingDoc = subDocs.find((d) => d.document_type === docType)
+                                  const isUploading = uploading === `${sub.id}-${docType}`
+                                  
+                                  return (
+                                    <div
+                                      key={docType}
+                                      className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        {existingDoc ? (
+                                          existingDoc.status === 'approved' ? (
+                                            <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                                              <Check className="w-3 h-3" />
+                                              Approved
+                                            </span>
+                                          ) : (
+                                            <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                              <Clock className="w-3 h-3" />
+                                              Uploaded
+                                            </span>
+                                          )
+                                        ) : (
+                                          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
+                                            <Clock className="w-3 h-3" />
+                                            Not Submitted
+                                          </span>
+                                        )}
+                                        <span className="font-medium">{docType}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {existingDoc ? (
+                                          <>
+                                            <a
+                                              href={`/api/file?pathname=${encodeURIComponent(existingDoc.file_url)}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                                            >
+                                              View
+                                            </a>
+                                            {existingDoc.status === 'uploaded' && (
+                                              <button
+                                                onClick={() => handleApprove(existingDoc.id)}
+                                                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                              >
+                                                Approve
+                                              </button>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <label className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                                            <Upload className="w-4 h-4" />
+                                            {isUploading ? 'Uploading...' : 'Upload File'}
+                                            <input
+                                              type="file"
+                                              className="hidden"
+                                              disabled={isUploading}
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0]
+                                                if (file) handleUpload(sub.id, docType, file)
+                                              }}
+                                            />
+                                          </label>
+                                        )}
+                                        <button className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{progress}%</div>
-                          <div className="text-xs text-muted-foreground">
-                            {subDocs.length} / {DOCUMENT_TYPES.length} docs
+                      )
+                    })}
+                  </div>
+                ) : (
+                  /* By Section View */
+                  <div className="space-y-3">
+                    {DOCUMENT_TYPES.map((docType) => {
+                      const docsOfType = documents.filter((d) => d.document_type === docType)
+                      const approvedCount = docsOfType.filter((d) => d.status === 'approved').length
+                      const totalForType = subcontractors.length
+                      const progress = totalForType > 0 ? Math.round((approvedCount / totalForType) * 100) : 0
+
+                      return (
+                        <div
+                          key={docType}
+                          className="flex items-center justify-between p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center">
+                              <FolderOpen className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-lg">{docType}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {docsOfType.length} document{docsOfType.length !== 1 ? 's' : ''}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <div className="font-semibold">
+                                {approvedCount} / {totalForType}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Approved</div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-medium">{progress}%</span>
+                              <div className="w-20 bg-muted rounded-full h-1.5">
+                                <div
+                                  className="bg-primary h-1.5 rounded-full transition-all"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="w-full bg-background rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
