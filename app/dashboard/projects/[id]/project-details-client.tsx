@@ -82,6 +82,7 @@ export default function ProjectDetailsClient({
   const [loading, setLoading] = useState(true)
   const [subView, setSubView] = useState<'bySubcontractor' | 'bySection'>('bySubcontractor')
   const [expandedSub, setExpandedSub] = useState<string | null>(null)
+  const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
   useEffect(() => {
     loadDocuments()
@@ -632,40 +633,134 @@ export default function ProjectDetailsClient({
                       const approvedCount = docsOfType.filter((d) => d.status === 'approved').length
                       const totalForType = subcontractors.length
                       const progress = totalForType > 0 ? Math.round((approvedCount / totalForType) * 100) : 0
+                      const isExpanded = expandedSection === docType
 
                       return (
-                        <div
-                          key={docType}
-                          className="flex items-center justify-between p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center">
-                              <FolderOpen className="w-6 h-6 text-muted-foreground" />
-                            </div>
-                            <div>
-                              <div className="font-semibold text-lg">{docType}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {docsOfType.length} document{docsOfType.length !== 1 ? 's' : ''}
+                        <div key={docType} className="border border-border rounded-xl overflow-hidden">
+                          {/* Section Header */}
+                          <button
+                            onClick={() => setExpandedSection(isExpanded ? null : docType)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center">
+                                <FolderOpen className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                              <div className="text-left">
+                                <div className="font-semibold text-lg">{docType}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {docsOfType.length} document{docsOfType.length !== 1 ? 's' : ''}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <div className="font-semibold">
-                                {approvedCount} / {totalForType}
+                            <div className="flex items-center gap-6">
+                              <div className="text-right">
+                                <div className="font-semibold">
+                                  {approvedCount} / {totalForType}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Approved</div>
                               </div>
-                              <div className="text-xs text-muted-foreground">Approved</div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-medium">{progress}%</span>
-                              <div className="w-20 bg-muted rounded-full h-1.5">
-                                <div
-                                  className="bg-primary h-1.5 rounded-full transition-all"
-                                  style={{ width: `${progress}%` }}
-                                />
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium">{progress}%</span>
+                                <div className="w-20 bg-muted rounded-full h-1.5">
+                                  <div
+                                    className="bg-primary h-1.5 rounded-full transition-all"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
                               </div>
+                              {isExpanded ? (
+                                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              )}
                             </div>
-                          </div>
+                          </button>
+
+                          {/* Expanded: List of subcontractors for this document type */}
+                          {isExpanded && (
+                            <div className="border-t border-border bg-muted/30 p-4 space-y-2">
+                              {subcontractors.map((sub) => {
+                                const existingDoc = documents.find(
+                                  (d) => d.subcontractor_id === sub.id && d.document_type === docType
+                                )
+                                const isUploading = uploading === `${sub.id}-${docType}`
+
+                                return (
+                                  <div
+                                    key={sub.id}
+                                    className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      {existingDoc ? (
+                                        existingDoc.status === 'approved' ? (
+                                          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                                            <Check className="w-3 h-3" />
+                                            Approved
+                                          </span>
+                                        ) : (
+                                          <span className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                            <Clock className="w-3 h-3" />
+                                            Uploaded
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
+                                          <Clock className="w-3 h-3" />
+                                          Not Submitted
+                                        </span>
+                                      )}
+                                      <div>
+                                        <span className="font-medium">{docType}</span>
+                                        <span className="text-sm text-muted-foreground ml-2">
+                                          {sub.vendor_name || sub.csi_division} ({sub.csi_code?.padStart(6, '0') || '000000'})
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {existingDoc ? (
+                                        <>
+                                          <a
+                                            href={`/api/file?pathname=${encodeURIComponent(existingDoc.file_url)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                                          >
+                                            View
+                                          </a>
+                                          {existingDoc.status === 'uploaded' && (
+                                            <button
+                                              onClick={() => handleApprove(existingDoc.id)}
+                                              className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <label className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                                          <Upload className="w-4 h-4" />
+                                          {isUploading ? 'Uploading...' : 'Upload File'}
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            disabled={isUploading}
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0]
+                                              if (file) handleUpload(sub.id, docType, file)
+                                            }}
+                                          />
+                                        </label>
+                                      )}
+                                      <button className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
