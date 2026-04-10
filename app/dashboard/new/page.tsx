@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, ArrowRight, Check, Plus, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Plus, X, Search } from 'lucide-react'
 import Image from 'next/image'
 
 interface ProjectInfoData {
@@ -55,8 +55,29 @@ export default function NewProjectPage() {
   const [subs, setSubs] = useState<SubEntry[]>(DEFAULT_SUBS)
   const [customSubForm, setCustomSubForm] = useState({ vendorName: '', csiDivision: '' })
   const [showCustomForm, setShowCustomForm] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const selectedSubs = subs.filter(s => s.selected)
+
+  // Filter and sort subcontractors: selected items first, then filter by search
+  const filteredSubs = useMemo(() => {
+    let items = subs.map((sub, idx) => ({ sub, idx }))
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      items = items.filter(({ sub }) =>
+        sub.csiDivision.toLowerCase().includes(q) ||
+        sub.csiCode.toLowerCase().includes(q) ||
+        sub.vendorName.toLowerCase().includes(q)
+      )
+    }
+    
+    // Sort: selected items first
+    const selected = items.filter(({ sub }) => sub.selected)
+    const unselected = items.filter(({ sub }) => !sub.selected)
+    return [...selected, ...unselected]
+  }, [subs, searchQuery])
 
   const handleNext = () => {
     if (step === 0 && !projectInfo.name) {
@@ -245,8 +266,19 @@ export default function NewProjectPage() {
                 </span>
               </div>
 
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {subs.map((sub, idx) => (
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search by trade name or CSI code..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {filteredSubs.map(({ sub, idx }) => (
                   <div key={idx} className={`rounded-xl border transition-all ${sub.selected ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>
                     <div className="flex items-center gap-4 p-4">
                       <label className="flex items-center gap-3 cursor-pointer flex-1">
@@ -279,6 +311,13 @@ export default function NewProjectPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* No results message */}
+                {filteredSubs.length === 0 && searchQuery && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No subcontractors found matching &quot;{searchQuery}&quot;
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-border pt-4">
