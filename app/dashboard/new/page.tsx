@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, ArrowRight, Check, Plus, X, Search } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Plus, X, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import Image from 'next/image'
 
 interface ProjectInfoData {
@@ -22,7 +22,7 @@ interface SubEntry {
   selected: boolean
 }
 
-const STEPS = ['Project Info', 'Select Subcontractors', 'Review & Create']
+const STEPS = ['Project Info', 'Select Subcontractors', 'Customize Documents', 'Review & Create']
 
 const DEFAULT_SUBS: SubEntry[] = [
   { vendorName: '', vendorCode: '', csiCode: '03', csiDivision: 'Concrete', documentTypes: ['Warranty', 'Manuals', 'Test Reports'], selected: false },
@@ -56,6 +56,37 @@ export default function NewProjectPage() {
   const [customSubForm, setCustomSubForm] = useState({ vendorName: '', csiDivision: '' })
   const [showCustomForm, setShowCustomForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [expandedSubs, setExpandedSubs] = useState<Set<number>>(new Set())
+  const [customDocInputs, setCustomDocInputs] = useState<Record<number, string>>({})
+  
+  const toggleExpanded = (idx: number) => {
+    setExpandedSubs(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }
+  
+  const toggleDocType = (subIdx: number, docType: string) => {
+    setSubs(prev => prev.map((s, i) => {
+      if (i !== subIdx) return s
+      const docs = s.documentTypes.includes(docType)
+        ? s.documentTypes.filter(d => d !== docType)
+        : [...s.documentTypes, docType]
+      return { ...s, documentTypes: docs }
+    }))
+  }
+  
+  const addCustomDocType = (subIdx: number) => {
+    const docName = customDocInputs[subIdx]?.trim()
+    if (!docName) return
+    setSubs(prev => prev.map((s, i) => {
+      if (i !== subIdx || s.documentTypes.includes(docName)) return s
+      return { ...s, documentTypes: [...s.documentTypes, docName] }
+    }))
+    setCustomDocInputs(prev => ({ ...prev, [subIdx]: '' }))
+  }
 
   const selectedSubs = subs.filter(s => s.selected)
 
@@ -365,6 +396,72 @@ export default function NewProjectPage() {
 
           {step === 2 && (
             <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-display font-bold">Customize Required Documents</h2>
+                <p className="text-sm text-muted-foreground mt-1">Toggle documents on/off for each subcontractor, or add custom requirements.</p>
+              </div>
+
+              <div className="space-y-3">
+                {selectedSubs.map((sub) => {
+                  const originalIdx = subs.findIndex(s => s === sub)
+                  const isExpanded = expandedSubs.has(originalIdx)
+                  return (
+                    <div key={originalIdx} className="border border-border rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => toggleExpanded(originalIdx)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{sub.csiDivision}</span>
+                          <span className="text-sm text-muted-foreground">
+                            CSI {sub.csiCode === 'Custom' ? 'Custom' : sub.csiCode.padStart(6, '0')} — {sub.documentTypes.length} docs
+                          </span>
+                        </div>
+                        {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="border-t border-border px-4 py-3 space-y-2 bg-secondary/10">
+                          {sub.documentTypes.map((doc) => (
+                            <label key={doc} className="flex items-center gap-3 cursor-pointer py-1">
+                              <input
+                                type="checkbox"
+                                checked={true}
+                                onChange={() => toggleDocType(originalIdx, doc)}
+                                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                              />
+                              <span className="text-sm">{doc}</span>
+                            </label>
+                          ))}
+                          
+                          {/* Add custom document type */}
+                          <div className="flex items-center gap-2 pt-2 mt-2 border-t border-border">
+                            <input
+                              value={customDocInputs[originalIdx] || ''}
+                              onChange={e => setCustomDocInputs(prev => ({ ...prev, [originalIdx]: e.target.value }))}
+                              onKeyDown={e => e.key === 'Enter' && addCustomDocType(originalIdx)}
+                              placeholder="Add document type..."
+                              className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            />
+                            <button
+                              onClick={() => addCustomDocType(originalIdx)}
+                              disabled={!customDocInputs[originalIdx]?.trim()}
+                              className="p-1.5 bg-primary/10 text-primary rounded-lg disabled:opacity-30 hover:bg-primary/20 transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-5">
               <h2 className="text-xl font-display font-bold">Review & Create</h2>
               
               <div className="space-y-4">
@@ -422,7 +519,7 @@ export default function NewProjectPage() {
           >
             <ArrowLeft className="w-4 h-4 inline mr-2" /> Back
           </button>
-          {step < 2 ? (
+          {step < 3 ? (
             <button
               onClick={handleNext}
               className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-sm hover:bg-primary/90 transition-all"
