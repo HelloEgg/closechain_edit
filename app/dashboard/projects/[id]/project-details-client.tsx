@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat, Users, FolderOpen, ChevronDown, ChevronUp, Plus, Clock } from 'lucide-react'
+import { ArrowLeft, Trash2, Upload, Check, FileText, Building2, Calendar, LogOut, HardHat, Users, FolderOpen, ChevronDown, ChevronUp, Plus, Clock, ExternalLink, Globe } from 'lucide-react'
 import Image from 'next/image'
 import ChatWidget from './chat-widget'
 
@@ -52,6 +52,8 @@ interface Project {
   total_documents: number
   uploaded_documents: number
   approved_documents: number
+  is_published?: boolean
+  client_portal_token?: string | null
 }
 
 interface Profile {
@@ -83,6 +85,37 @@ export default function ProjectDetailsClient({
   const [subView, setSubView] = useState<'bySubcontractor' | 'bySection'>('bySubcontractor')
   const [expandedSub, setExpandedSub] = useState<string | null>(null)
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+
+  const handlePublish = async (publish: boolean) => {
+    setPublishing(true)
+    try {
+      const res = await fetch('/api/publish-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, publish }),
+      })
+      
+      if (!res.ok) throw new Error('Failed to update')
+      
+      const data = await res.json()
+      setProject(prev => ({
+        ...prev,
+        is_published: data.is_published,
+        client_portal_token: data.client_portal_token,
+      }))
+    } catch (error) {
+      console.error('Publish error:', error)
+      alert('Failed to update project')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const getClientPortalUrl = () => {
+    if (!project.client_portal_token) return ''
+    return `${window.location.origin}/client-portal/${project.client_portal_token}`
+  }
 
   useEffect(() => {
     loadDocuments()
@@ -251,6 +284,12 @@ export default function ProjectDetailsClient({
           <div className="flex items-start justify-between mb-6">
             <div>
               <div className="flex items-center gap-3 mb-2 flex-wrap">
+                {project.is_published && (
+                  <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    <Globe className="w-3 h-3" />
+                    Published
+                  </span>
+                )}
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
                     project.status || 'draft'
@@ -270,51 +309,54 @@ export default function ProjectDetailsClient({
               </div>
               <h1 className="text-4xl font-display font-bold text-foreground mb-4">{project.name}</h1>
             </div>
-            <button
-              onClick={handleDelete}
-              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{subcontractors.length}</div>
-              <div className="text-sm text-muted-foreground mt-1">SUBS</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{project.approved_documents || 0}</div>
-              <div className="text-sm text-muted-foreground mt-1">DOCS</div>
-            </div>
-            <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto">
-                <svg className="w-24 h-24 transform -rotate-90">
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 40}`}
-                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - overallProgress / 100)}`}
-                    className="text-primary transition-all duration-500"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold text-foreground">{overallProgress}%</span>
-                </div>
+          <div className="flex items-center justify-between bg-muted/50 rounded-xl p-4">
+            <div className="flex items-center gap-8">
+              <div className="text-center px-4">
+                <div className="text-3xl font-bold text-foreground">{subcontractors.length}</div>
+                <div className="text-xs text-muted-foreground mt-1">SUBS</div>
               </div>
+              <div className="h-10 w-px bg-border" />
+              <div className="text-center px-4">
+                <div className="text-3xl font-bold text-foreground">{project.approved_documents || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">DOCS</div>
+              </div>
+              <div className="h-10 w-px bg-border" />
+              <div className="text-center px-4">
+                <span className="text-xl font-bold text-foreground">{overallProgress}%</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {project.is_published && project.client_portal_token && (
+                <a
+                  href={getClientPortalUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                >
+                  View Client Portal
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+              <button
+                onClick={() => handlePublish(!project.is_published)}
+                disabled={publishing}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                  project.is_published
+                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                {publishing ? 'Updating...' : project.is_published ? 'Unpublish' : 'Publish'}
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-2.5 border border-border rounded-lg text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
