@@ -178,9 +178,7 @@ export default function ClientPortalClient({
         {viewMode === 'bySubcontractor' ? (
           /* By Subcontractor View */
           <div className="space-y-4">
-            {console.log("[v0] Subcontractors:", subcontractors)}
             {subcontractors.map((sub) => {
-              console.log("[v0] Sub:", sub.vendor_name, "document_types:", sub.document_types)
               const subDocs = documents.filter((d) => d.subcontractor_id === sub.id)
               const subDocTypes = sub.document_types || []
               const approvedCount = subDocs.filter((d) => d.status === 'approved').length
