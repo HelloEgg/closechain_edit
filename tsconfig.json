@@ -39,7 +39,10 @@
   "exclude": [
     "node_modules",
     ".next",
-    "lib",
+    "lib/replit-auth-web",
+    "lib/integrations-openai-ai-server",
+    "lib/integrations-openai-ai-react",
+    "lib/integrations-openai-ai-common",
     "artifacts",
     "scripts",
     "_backup_repo",
