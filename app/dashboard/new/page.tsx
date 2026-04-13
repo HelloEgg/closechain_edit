@@ -185,6 +185,7 @@ export default function NewProjectPage() {
         vendor_code: s.vendorCode || s.csiCode,
         csi_code: s.csiCode,
         csi_division: s.csiDivision,
+        document_types: s.documentTypes,
         total_docs: s.documentTypes.length,
         received_docs: 0,
         progress: 0,
