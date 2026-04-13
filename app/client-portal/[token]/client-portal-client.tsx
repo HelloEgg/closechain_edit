@@ -50,8 +50,27 @@ export default function ClientPortalClient({
   const [subcontractors] = useState(initialSubcontractors)
   const [documents, setDocuments] = useState(initialDocuments)
   const [viewMode, setViewMode] = useState<'bySubcontractor' | 'byDocumentType'>('bySubcontractor')
-  const [expandedSub, setExpandedSub] = useState<string | null>(null)
-  const [expandedDocType, setExpandedDocType] = useState<string | null>(null)
+  // All items expanded by default like the cloned repo
+  const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set())
+  const [collapsedDocTypes, setCollapsedDocTypes] = useState<Set<string>>(new Set())
+  
+  const toggleSub = (id: string) => {
+    setCollapsedSubs(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  
+  const toggleDocType = (docType: string) => {
+    setCollapsedDocTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(docType)) next.delete(docType)
+      else next.add(docType)
+      return next
+    })
+  }
   const [uploading, setUploading] = useState<string | null>(null)
 
   // Calculate overall progress
@@ -164,13 +183,13 @@ export default function ClientPortalClient({
               const subDocTypes = sub.document_types || []
               const approvedCount = subDocs.filter((d) => d.status === 'approved').length
               const progress = subDocTypes.length > 0 ? Math.round((approvedCount / subDocTypes.length) * 100) : 0
-              const isExpanded = expandedSub === sub.id
+              const isExpanded = !collapsedSubs.has(sub.id)
 
               return (
                 <div key={sub.id} className="border border-border rounded-xl overflow-hidden bg-card">
                   {/* Subcontractor Header */}
                   <button
-                    onClick={() => setExpandedSub(isExpanded ? null : sub.id)}
+                    onClick={() => toggleSub(sub.id)}
                     className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-4">
@@ -270,13 +289,13 @@ export default function ClientPortalClient({
               const subsWithDocType = subcontractors.filter((s) => s.document_types?.includes(docType))
               const approvedCount = docsOfType.filter((d) => d.status === 'approved').length
               const progress = subsWithDocType.length > 0 ? Math.round((approvedCount / subsWithDocType.length) * 100) : 0
-              const isExpanded = expandedDocType === docType
+              const isExpanded = !collapsedDocTypes.has(docType)
 
               return (
                 <div key={docType} className="border border-border rounded-xl overflow-hidden bg-card">
                   {/* Document Type Header */}
                   <button
-                    onClick={() => setExpandedDocType(isExpanded ? null : docType)}
+                    onClick={() => toggleDocType(docType)}
                     className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-4">
